@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qwmo"
+version = "1.0.0"
+description = "Reference implementation of the Quantum Wave-function Metaheuristic Optimizer."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Omer Samuk" }
+]
+keywords = [
+    "optimization",
+    "metaheuristic",
+    "quantum-inspired",
+    "swarm-intelligence",
+    "multimodal-optimization"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics"
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10"
+]
+
+[project.urls]
+Homepage = "https://github.com/OmerSamuk/QWMO"
+Repository = "https://github.com/OmerSamuk/QWMO"
+Issues = "https://github.com/OmerSamuk/QWMO/issues"
+
+[tool.setuptools.packages.find]
+include = ["qwmo*"]

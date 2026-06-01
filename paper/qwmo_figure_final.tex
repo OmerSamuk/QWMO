@@ -1,0 +1,328 @@
+% ============================================================
+% qwmo_figure_final.tex
+% Figure 1 — QWMO Operators
+% Elsevier-compatible TikZ figure
+% ============================================================
+
+\begin{figure*}[t]
+\centering
+
+\begin{tikzpicture}[
+    >=Stealth,
+    thick,
+    scale=0.86,
+    every node/.style={scale=0.86},
+    agent/.style={
+        circle,
+        draw=black,
+        line width=0.45pt,
+        inner sep=2.35pt
+    },
+    boxnote/.style={
+        draw=gray!45,
+        fill=gray!6,
+        rounded corners,
+        font=\scriptsize,
+        align=left,
+        inner sep=4pt
+    }
+]
+
+% ============================================================
+% PANEL SEPARATORS
+% ============================================================
+
+\draw[gray!35, dashed, line width=0.6pt]
+    (5.8,-1.15) -- (5.8,5.0);
+
+\draw[gray!35, dashed, line width=0.6pt]
+    (11.6,-1.15) -- (11.6,5.0);
+
+% ============================================================
+% PANEL A — ADAPTIVE ORBITAL SAMPLING
+% ============================================================
+
+\node[font=\bfseries]
+    at (2.9,4.7)
+    {(a) Adaptive Orbital Sampling};
+
+% Explorative agent
+\node[
+    agent,
+    fill=red!55,
+    label={[font=\scriptsize]below:
+    Explorative ($q_i\!\approx\!0$)}
+]
+    (explore) at (1.0,1.5) {};
+
+% Wide orbital
+\draw[red!25, fill=red!5, opacity=0.65]
+    (explore) circle (1.55);
+
+\draw[red!45, dashed, fill=red!10, opacity=0.55]
+    (explore) circle (0.9);
+
+\draw[->, red!75]
+    (explore) -- ++(0,1.55)
+    node[right, font=\scriptsize]
+    {$\sigma_{\max,i}$};
+
+\draw[->, red!55, dashed]
+    (explore) -- ++(0,0.9)
+    node[left, font=\scriptsize]
+    {$\sigma_i(t)$};
+
+% Sample point from broad orbital
+\node[
+    agent,
+    fill=red!35,
+    inner sep=1.45pt,
+    label={[font=\scriptsize]right:$\mathbf{x}'$}
+]
+    (sampleA) at (1.6,2.7) {};
+
+\draw[->, red!55, dashed]
+    (explore) -- (sampleA);
+
+% Exploitative agent
+\node[
+    agent,
+    fill=blue!60,
+    label={[font=\scriptsize]below:
+    Exploitative ($q_i\!\approx\!1$)}
+]
+    (exploit) at (4.5,1.5) {};
+
+% Narrow orbital
+\draw[blue!30, fill=blue!5, opacity=0.7]
+    (exploit) circle (0.55);
+
+\draw[->, blue!75]
+    (exploit) -- ++(0,0.55)
+    node[right, font=\scriptsize]
+    {$\sigma_i(t)$};
+
+% Sample point from narrow orbital
+\node[
+    agent,
+    fill=blue!35,
+    inner sep=1.45pt,
+    label={[font=\scriptsize]right:$\mathbf{x}'$}
+]
+    (sampleB) at (4.7,1.95) {};
+
+\draw[->, blue!55, dashed]
+    (exploit) -- (sampleB);
+
+% Formula box
+\node[boxnote]
+    at (2.9,-0.5)
+{
+$\sigma_{\max,i}=\gamma(u-\ell)(2-q_i)$\\
+$\sigma_i(t)=
+\max\!\left\{\sigma_{\max,i}e^{-c_i t/T_{\max}},
+\sigma_{\lfloor}\right\}$\\
+$c_i=c_{\mathrm{base}}q_i$
+};
+
+% ============================================================
+% PANEL B — PAULI-INSPIRED EXCLUSION
+% ============================================================
+
+\node[font=\bfseries]
+    at (8.7,4.7)
+    {(b) Pauli-Inspired Exclusion};
+
+% Better agent
+\node[
+    agent,
+    fill=green!50!black,
+    label={[font=\scriptsize]above:$\mathbf{x}_g$}
+]
+    (xg) at (8.0,2.5) {};
+
+% Weaker agent
+\node[
+    agent,
+    fill=orange!65,
+    label={[font=\scriptsize]below:$\mathbf{x}_b$}
+]
+    (xb) at (7.2,1.0) {};
+
+% Exclusion radius
+\draw[gray!45, dashed]
+    (xg) circle (1.8);
+
+\node[font=\scriptsize, color=gray]
+    at (9.6,3.8)
+    {$\varepsilon$};
+
+% Collision vector
+\draw[->, black, line width=1.1pt]
+    (xg) -- (xb)
+    node[midway, left, font=\scriptsize]
+    {$\mathbf{v}$};
+
+% Orthogonal displacement
+\draw[->, blue!75, line width=1.45pt]
+    (xb) -- ++(1.2,-0.64)
+    node[right, font=\scriptsize]
+    {$\mathbf{p}\perp\mathbf{v}$};
+
+% New position
+\node[
+    agent,
+    fill=orange!40,
+    inner sep=1.45pt,
+    label={[font=\scriptsize]right:$\mathbf{x}_b'$}
+]
+    (xbnew) at (8.65,0.36) {};
+
+\draw[
+    ->,
+    orange!70,
+    dashed,
+    line width=1.1pt
+]
+    (xb) -- (xbnew)
+    node[midway, below right, font=\scriptsize]
+    {$\alpha$};
+
+% Formula box
+\node[boxnote]
+    at (8.7,-0.5)
+{
+$\mathbf{p}=
+\mathbf{r}-
+\dfrac{\mathbf{r}^{\top}\mathbf{v}}
+{\|\mathbf{v}\|^2+10^{-10}}\mathbf{v}$\\
+$\alpha\sim\mathcal{U}(0.5\varepsilon,1.5\varepsilon)$
+};
+
+% ============================================================
+% PANEL C — ADAPTIVE QUANTUM ESCAPE
+% ============================================================
+
+\node[font=\bfseries]
+    at (14.8,4.7)
+    {(c) Adaptive Quantum Escape};
+
+% Energy landscape
+\draw[black, line width=1.25pt]
+plot[smooth, tension=0.7] coordinates {
+    (12.0,3.5)
+    (12.5,2.8)
+    (13.0,0.7)
+    (13.5,2.2)
+    (14.0,2.8)
+    (14.6,1.8)
+    (15.2,-0.3)
+    (15.8,1.5)
+    (16.5,3.2)
+};
+
+% Stagnating agent
+\node[
+    agent,
+    fill=purple!65,
+    label={[font=\scriptsize, color=purple]left:$k_i>k_s$}
+]
+    (trapped) at (13.0,0.7) {};
+
+% Escape probability
+\node[
+    font=\scriptsize,
+    color=purple!70
+]
+    at (13.1,1.55)
+{
+$P_{\mathrm{esc}}=e^{-2\kappa(t)L_{\mathrm{norm}}}$
+};
+
+% Global best
+\node[
+    agent,
+    fill=black,
+    inner sep=3pt,
+    label={[font=\scriptsize]below:$\mathbf{x}^{*}$}
+]
+    (gopt) at (15.2,-0.3) {};
+
+% Random exploration target
+\node[
+    agent,
+    fill=gray!60,
+    inner sep=2.2pt,
+    label={[font=\scriptsize]right:$\mathbf{x}_r$}
+]
+    (randp) at (16.05,1.8) {};
+
+% Wavy escape path
+\draw[
+    purple!50,
+    line width=1pt,
+    decoration={
+        snake,
+        amplitude=1.4pt,
+        segment length=6pt
+    },
+    decorate
+]
+    (trapped) -- (14.55,0.7);
+
+% Hybrid stochastic relocation arrows
+\draw[
+    ->,
+    orange!85,
+    line width=1.7pt,
+    dashed,
+    bend left=30
+]
+    (trapped) to
+    node[above, font=\scriptsize, color=orange!80]
+    {$\beta$}
+    (gopt);
+
+\draw[
+    ->,
+    gray!70,
+    line width=1.4pt,
+    dashed,
+    bend left=12
+]
+    (trapped) to
+    node[above, font=\scriptsize]
+    {$1-\beta$}
+    (randp);
+
+% Formula box
+\node[boxnote]
+    at (14.8,-0.5)
+{
+$\kappa(t)=\kappa_0 t/T_{\max}$\\
+$\mathbf{x}'=\beta(\mathbf{x}^{*}+\boldsymbol{\eta})
++(1-\beta)\mathbf{x}_r$
+};
+
+\end{tikzpicture}
+
+\caption{
+Schematic illustration of the three operators composing QWMO.
+(a) Adaptive Orbital Sampling dynamically adjusts the Gaussian
+sampling radius according to solution quality, balancing
+exploration and exploitation.
+(b) Pauli-Inspired Exclusion applies orthogonal displacement
+when neighboring agents violate the exclusion radius
+$\varepsilon$, promoting spatial diversity.
+(c) Adaptive Quantum Escape enables stagnating agents
+to leave local minima through probabilistic
+$\beta$-hybrid stochastic relocation between
+the global-best region and random exploration targets.
+The terminology is used as an optimization analogy rather than
+a direct physical simulation of quantum systems.
+The combined interaction of the three operators establishes
+the exploration--exploitation balance of QWMO.
+}
+\label{fig:qwmo_operators}
+
+\end{figure*}

@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+
+title: "QWMO: Quantum Wave-function Metaheuristic Optimizer"
+
+message: >
+If you use this software in academic work, please cite the
+accompanying paper and repository.
+
+type: software
+
+authors:
+
+* family-names: "Samuk"
+  given-names: "Omer"
+
+repository-code: "https://github.com/OmerSamuk/QWMO"
+
+license: "MIT"
+
+abstract: >
+QWMO is a population-based optimization algorithm inspired by
+probabilistic concepts from quantum mechanics. The algorithm
+combines adaptive orbital sampling, Pauli-inspired exclusion,
+and adaptive quantum escape operators for multimodal
+continuous optimization.
+
+keywords:
+
+* optimization
+* metaheuristic
+* quantum-inspired optimization
+* swarm intelligence
+* multimodal optimization
+
+version: "1.0.0"
+
+date-released: "2026-06-01"
