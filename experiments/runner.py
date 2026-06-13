@@ -1,5 +1,7 @@
-import numpy as np
+import os
 import time
+import numpy as np
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from benchmark.cec2017 import CEC2017Benchmark, get_cec2017_functions
 from core.qwmo import QWMO
 from baselines.aso import ASO
@@ -7,6 +9,11 @@ from baselines.aos import AOS
 from baselines.qpso import QPSO
 from mealpy import PSO, GA, GWO, HHO, SHADE
 import cma
+
+
+def _run_single_experiment(func_id, dimension, algo_name, seed, pop_size, max_fes):
+    runner = ExperimentRunner(dimensions=dimension, population_size=pop_size, max_fes=max_fes, num_runs=1, seed_list=[seed])
+    return (func_id, algo_name, seed, runner.run_single_experiment(func_id, algo_name, seed))
 
 
 class ExperimentRunner:
@@ -244,7 +251,7 @@ class ExperimentRunner:
         else:
             raise ValueError(f"Unknown algorithm: {algorithm_name}")
     
-    def run_full_experiment(self, func_ids=None, algorithms=None):
+    def run_full_experiment(self, func_ids=None, algorithms=None, parallel=True):
         if func_ids is None:
             func_ids = get_cec2017_functions()
         
@@ -254,36 +261,82 @@ class ExperimentRunner:
                 'PSO', 'GA', 'GWO', 'HHO', 'SHADE', 'ASO', 'AOS', 'QPSO', 'CMA_ES'
             ]
         
+        self.results = {}
         for func_id in func_ids:
-            print(f"\n{'='*60}")
-            print(f"Function F{func_id} (D={self.dimensions})")
-            print(f"{'='*60}")
-            
             self.results[f'F{func_id}'] = {}
-            
             for algo_name in algorithms:
-                print(f"\n{algo_name}:")
-                fitnesses = []
-                times = []
+                self.results[f'F{func_id}'][algo_name] = {
+                    'fitnesses': [], 'times': []
+                }
+        
+        if parallel:
+            n_workers = min(8, os.cpu_count() or 1)
+            print(f"Using {n_workers} workers for parallel execution")
+            
+            tasks = [(func_id, algo_name, seed)
+                     for func_id in func_ids
+                     for algo_name in algorithms
+                     for seed in self.seed_list]
+            
+            completed = 0
+            total = len(tasks)
+            
+            with ProcessPoolExecutor(max_workers=n_workers) as executor:
+                fut_to_task = {
+                    executor.submit(
+                        _run_single_experiment, func_id, self.dimensions,
+                        algo_name, seed, self.population_size, self.max_fes
+                    ): (func_id, algo_name, seed)
+                    for func_id, algo_name, seed in tasks
+                }
                 
-                for i, seed in enumerate(self.seed_list):
-                    result = self.run_single_experiment(func_id, algo_name, seed)
-                    
-                    if result:
-                        fitnesses.append(result['best_fitness'])
-                        times.append(result['elapsed_time'])
-                        print(f"  Run {i+1}/{self.num_runs}: fitness={result['best_fitness']:.6e}, time={result['elapsed_time']:.2f}s")
-                    
-                    self.results[f'F{func_id}'][algo_name] = {
-                        'fitnesses': fitnesses,
-                        'mean': np.mean(fitnesses) if fitnesses else None,
-                        'std': np.std(fitnesses) if fitnesses else None,
-                        'times': times,
-                        'mean_time': np.mean(times) if times else None
-                    }
+                for future in as_completed(fut_to_task):
+                    func_id, algo_name, seed = fut_to_task[future]
+                    completed += 1
+                    try:
+                        _, _, _, result = future.result()
+                        if result:
+                            self.results[f'F{func_id}'][algo_name]['fitnesses'].append(result['best_fitness'])
+                            self.results[f'F{func_id}'][algo_name]['times'].append(result['elapsed_time'])
+                            print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: "
+                                  f"f={result['best_fitness']:.6e} t={result['elapsed_time']:.2f}s")
+                        else:
+                            print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: FAILED")
+                    except Exception as e:
+                        print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: ERROR {e}")
+        else:
+            for func_id in func_ids:
+                print(f"\n{'='*60}")
+                print(f"Function F{func_id} (D={self.dimensions})")
+                print(f"{'='*60}")
                 
-                if fitnesses:
-                    print(f"  Mean: {np.mean(fitnesses):.6e} ± {np.std(fitnesses):.6e}")
+                for algo_name in algorithms:
+                    print(f"\n{algo_name}:")
+                    
+                    for i, seed in enumerate(self.seed_list):
+                        result = self.run_single_experiment(func_id, algo_name, seed)
+                        
+                        if result:
+                            self.results[f'F{func_id}'][algo_name]['fitnesses'].append(result['best_fitness'])
+                            self.results[f'F{func_id}'][algo_name]['times'].append(result['elapsed_time'])
+                            print(f"  Run {i+1}/{self.num_runs}: fitness={result['best_fitness']:.6e}, time={result['elapsed_time']:.2f}s")
+                        else:
+                            print(f"  Run {i+1}/{self.num_runs}: FAILED")
+        
+        print(f"\n{'='*60}")
+        print("Final Summary")
+        print(f"{'='*60}")
+        for func_id in func_ids:
+            for algo_name in algorithms:
+                fits = self.results[f'F{func_id}'][algo_name]['fitnesses']
+                ts = self.results[f'F{func_id}'][algo_name]['times']
+                self.results[f'F{func_id}'][algo_name].update({
+                    'mean': np.mean(fits) if fits else None,
+                    'std': np.std(fits) if fits else None,
+                    'mean_time': np.mean(ts) if ts else None,
+                })
+                if fits:
+                    print(f"F{func_id} | {algo_name}: Mean={np.mean(fits):.6e} ± {np.std(fits):.6e}")
         
         return self.results
 
