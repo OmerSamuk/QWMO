@@ -7,7 +7,11 @@ from core.qwmo import QWMO
 from baselines.aso import ASO
 from baselines.aos import AOS
 from baselines.qpso import QPSO
-from mealpy import PSO, GA, GWO, HHO, SHADE
+from mealpy.swarm_based.PSO import OriginalPSO
+from mealpy.evolutionary_based.GA import OriginalGA
+from mealpy.swarm_based.GWO import OriginalGWO
+from mealpy.swarm_based.HHO import OriginalHHO
+from mealpy.evolutionary_based.SHADE import OriginalSHADE
 import cma
 
 
@@ -139,13 +143,14 @@ class ExperimentRunner:
     def run_mealpy_algorithm(self, benchmark, algorithm_class, seed=None):
         from mealpy import Problem, FloatVar
         
-        problem = Problem(
-            lb=[benchmark.lower_bound] * self.dimensions,
-            ub=[benchmark.upper_bound] * self.dimensions,
-            minmax="min",
-            fit_func=lambda x: benchmark(x),
-            save_population=False
-        )
+        bounds = [FloatVar(lb=benchmark.lower_bound, ub=benchmark.upper_bound, name=f"x{i}") 
+                  for i in range(self.dimensions)]
+        
+        class BenchmarkProblem(Problem):
+            def obj_func(self, x):
+                return benchmark(x)
+        
+        problem = BenchmarkProblem(bounds=bounds, minmax="min")
         
         termination = {
             "max_fe": self.max_fes
@@ -165,7 +170,7 @@ class ExperimentRunner:
             
             best_pos = optimizer.g_best.solution
             best_fit = optimizer.g_best.target.fitness
-            convergence = optimizer.convergence
+            convergence = optimizer.history.list_global_best_fit
             
             elapsed = time.time() - start_time
             
@@ -237,15 +242,15 @@ class ExperimentRunner:
         elif algorithm_name == 'QPSO':
             return self.run_qpso(benchmark, seed)
         elif algorithm_name == 'PSO':
-            return self.run_mealpy_algorithm(benchmark, PSO, seed)
+            return self.run_mealpy_algorithm(benchmark, OriginalPSO, seed)
         elif algorithm_name == 'GA':
-            return self.run_mealpy_algorithm(benchmark, GA, seed)
+            return self.run_mealpy_algorithm(benchmark, OriginalGA, seed)
         elif algorithm_name == 'GWO':
-            return self.run_mealpy_algorithm(benchmark, GWO, seed)
+            return self.run_mealpy_algorithm(benchmark, OriginalGWO, seed)
         elif algorithm_name == 'HHO':
-            return self.run_mealpy_algorithm(benchmark, HHO, seed)
+            return self.run_mealpy_algorithm(benchmark, OriginalHHO, seed)
         elif algorithm_name == 'SHADE':
-            return self.run_mealpy_algorithm(benchmark, SHADE, seed)
+            return self.run_mealpy_algorithm(benchmark, OriginalSHADE, seed)
         elif algorithm_name == 'CMA_ES':
             return self.run_cma_es(benchmark, seed)
         else:

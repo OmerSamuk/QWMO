@@ -29,6 +29,8 @@ class ASO:
         r = np.linalg.norm(atom1 - atom2)
         c = (1 - (iteration - 1) / max_iteration) ** 3
         
+        s = s + 1e-10
+        
         rsmin = 1.1 + 0.1 * np.sin(iteration / max_iteration * np.pi / 2)
         rsmax = 1.24
         
