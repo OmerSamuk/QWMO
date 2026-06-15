@@ -66,16 +66,16 @@ class QWMO:
             best_fitness = min(fitnesses)
             worst_fitness = max(fitnesses)
             
-            for agent in self.agents:
-                new_position = adaptive_orbital_sampling(
+            new_positions = [
+                adaptive_orbital_sampling(
                     agent, best_fitness, worst_fitness, t, T_max,
                     self.gamma, self.c_base, self.lower_bound, self.upper_bound
-                )
-                
-                new_fitness = self.func(new_position)
-                self.fes_count += 1
+                ) for agent in self.agents
+            ]
+            new_fitnesses = [self.func(p) for p in new_positions]
+            self.fes_count += len(new_positions)
+            for agent, new_position, new_fitness in zip(self.agents, new_positions, new_fitnesses):
                 agent.update_position(new_position, new_fitness)
-                
                 if agent.fitness < self.best_agent.fitness:
                     self.best_agent = agent.copy()
             
