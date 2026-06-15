@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from benchmark.cec2017 import CEC2017Benchmark, get_cec2017_functions
@@ -21,14 +22,15 @@ def _run_single_experiment(func_id, dimension, algo_name, seed, pop_size, max_fe
 
 
 class ExperimentRunner:
-    def __init__(self, dimensions=30, population_size=50, max_fes=3000000, 
-                 num_runs=30, seed_list=None):
+    def __init__(self, dimensions=30, population_size=50, max_fes=3000000,
+                 num_runs=30, seed_list=None, max_workers=None):
         self.dimensions = dimensions
         self.population_size = population_size
         self.max_fes = max_fes
         self.num_runs = num_runs
         self.seed_list = seed_list if seed_list is not None else list(range(1, num_runs + 1))
-        
+        self.max_workers = max_workers or int(os.environ.get('MAX_WORKERS', 8))
+
         self.results = {}
     
     def run_qwmo(self, benchmark, ablation_config='full', seed=None):
@@ -275,7 +277,7 @@ class ExperimentRunner:
                 }
         
         if parallel:
-            n_workers = min(8, os.cpu_count() or 1)
+            n_workers = min(self.max_workers, os.cpu_count() or 1)
             print(f"Using {n_workers} workers for parallel execution")
             
             tasks = [(func_id, algo_name, seed)
@@ -309,6 +311,14 @@ class ExperimentRunner:
                             print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: FAILED")
                     except Exception as e:
                         print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: ERROR {e}")
+
+                    if completed % 50 == 0:
+                        ckpt_dir = 'results'
+                        os.makedirs(ckpt_dir, exist_ok=True)
+                        ckpt_path = os.path.join(ckpt_dir, f'checkpoint_{completed}.json')
+                        with open(ckpt_path, 'w') as f:
+                            json.dump(self.results, f, default=str)
+                        print(f"  [checkpoint] Saved {ckpt_path}")
         else:
             for func_id in func_ids:
                 print(f"\n{'='*60}")
