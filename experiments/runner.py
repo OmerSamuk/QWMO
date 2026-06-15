@@ -150,23 +150,23 @@ class ExperimentRunner:
             def obj_func(self, x):
                 return benchmark(x)
         
-        problem = BenchmarkProblem(bounds=bounds, minmax="min")
-        
+        problem = BenchmarkProblem(bounds, minmax="min")
+
         termination = {
             "max_fe": self.max_fes
         }
-        
+
         if seed is not None:
             np.random.seed(seed)
-        
+
         start_time = time.time()
-        
+
         try:
             optimizer = algorithm_class(
                 epoch=self.max_fes // self.population_size,
                 pop_size=self.population_size
             )
-            optimizer.solve(problem, termination=termination)
+            optimizer.solve(problem, termination=termination, verbose=False)
             
             best_pos = optimizer.g_best.solution
             best_fit = optimizer.g_best.target.fitness
