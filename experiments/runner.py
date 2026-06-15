@@ -143,15 +143,17 @@ class ExperimentRunner:
         }
     
     def run_mealpy_algorithm(self, benchmark, algorithm_class, seed=None):
+        import contextlib
+        import io
         from mealpy import Problem, FloatVar
-        
-        bounds = [FloatVar(lb=benchmark.lower_bound, ub=benchmark.upper_bound, name=f"x{i}") 
+
+        bounds = [FloatVar(lb=benchmark.lower_bound, ub=benchmark.upper_bound, name=f"x{i}")
                   for i in range(self.dimensions)]
-        
+
         class BenchmarkProblem(Problem):
             def obj_func(self, x):
                 return benchmark(x)
-        
+
         problem = BenchmarkProblem(bounds, minmax="min")
 
         termination = {
@@ -168,7 +170,8 @@ class ExperimentRunner:
                 epoch=self.max_fes // self.population_size,
                 pop_size=self.population_size
             )
-            optimizer.solve(problem, termination=termination, verbose=False)
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                optimizer.solve(problem, termination=termination)
             
             best_pos = optimizer.g_best.solution
             best_fit = optimizer.g_best.target.fitness
