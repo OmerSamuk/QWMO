@@ -15,7 +15,7 @@ QWMO_PARAMS = {
 EXPERIMENTAL_PARAMS = {
     'dimensions': [30, 50, 100],
     'population_size': 50,
-    'max_fes': 3_000_000,
+    'max_fes_per_dim': {30: 300_000, 50: 500_000, 100: 1_000_000},
     'independent_runs': 30,
     'seed_list': list(range(1, 31)),
 }

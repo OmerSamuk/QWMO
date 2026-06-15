@@ -22,10 +22,13 @@ def run_full_experiment(dimensions=None, output_dir='results'):
         print(f"Running experiments for D={dim}")
         print(f"{'='*70}")
         
+        max_fes = EXPERIMENTAL_PARAMS['max_fes_per_dim'][dim]
+        print(f"FEs budget: {max_fes:,} (CEC2017 standard: 10,000·D)")
+        
         runner = ExperimentRunner(
             dimensions=dim,
             population_size=EXPERIMENTAL_PARAMS['population_size'],
-            max_fes=EXPERIMENTAL_PARAMS['max_fes'],
+            max_fes=max_fes,
             num_runs=EXPERIMENTAL_PARAMS['independent_runs'],
             seed_list=EXPERIMENTAL_PARAMS['seed_list']
         )
