@@ -88,6 +88,7 @@ GAPR_PILOT_CONFIG = {
     "population_size": 50,
     "max_fes": 300_000,
     "seeds": list(range(1, 11)),
+    "search_range": 200,
     "ablation_configs": [
         "QWMO_OrbitalOnly",
         "QWMO_OrbitalPauli_Static",

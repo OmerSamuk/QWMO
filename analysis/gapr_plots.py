@@ -8,6 +8,7 @@ import os
 import json
 import argparse
 import numpy as np
+from scipy.stats import pearsonr
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -148,6 +149,55 @@ def plot_diversity_and_epsilon(data, func_id, output_dir):
     print(f"  Saved {path}")
 
 
+def plot_epsilon_diversity_correlation(data, func_id, output_dir):
+    fkey = f'F{func_id}'
+    adaptive_cfgs = ['QWMO_OrbitalPauli_Adaptive', 'QWMO_Full_Adaptive']
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    for ax_idx, cfg in enumerate(adaptive_cfgs):
+        ax = axes[ax_idx]
+        if cfg not in data.get(fkey, {}):
+            ax.set_title(f'{cfg.replace("QWMO_", "")} — no data')
+            continue
+
+        div_list_list = data[fkey][cfg].get('diversity_history_list', [])
+        ep_list_list = data[fkey][cfg].get('epsilon_history_list', [])
+        if not div_list_list or not ep_list_list:
+            ax.set_title(f'{cfg.replace("QWMO_", "")} — no data')
+            continue
+
+        all_r = []
+        for div_hist, ep_hist in zip(div_list_list, ep_list_list):
+            if len(div_hist) < 2 or len(ep_hist) < 2:
+                continue
+            sample_indices = [i * 500 for i in range(1, len(div_hist))]
+            sample_indices = [i for i in sample_indices if i <= len(ep_hist)]
+            if len(sample_indices) < 2:
+                continue
+            eps_samples = [ep_hist[i - 1] for i in sample_indices]
+            div_samples = [div_hist[i // 500] for i in sample_indices]
+            r, p = pearsonr(div_samples, eps_samples)
+            all_r.append(r)
+            ax.scatter(div_samples, eps_samples, alpha=0.5, s=10)
+
+        if all_r:
+            mean_r = np.mean(all_r)
+            ax.set_title(f'{cfg.replace("QWMO_", "")}\nPearson r = {mean_r:.3f}')
+        else:
+            ax.set_title(f'{cfg.replace("QWMO_", "")} — no correlation data')
+
+        ax.set_xlabel('Diversity')
+        ax.set_ylabel('Epsilon')
+        ax.grid(True, alpha=0.3)
+
+    fig.tight_layout()
+    path = os.path.join(output_dir, f'epsilon_diversity_correlation_F{func_id}.png')
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"  Saved {path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description='GAPR plot generation')
     parser.add_argument('--input', type=str, default='results/gapr_pilot/gapr_pilot_D30.json',
@@ -175,6 +225,7 @@ def main():
         plot_epsilon_history(data, fid, args.output_dir)
         plot_pauli_mechanism(data, fid, args.output_dir)
         plot_diversity_and_epsilon(data, fid, args.output_dir)
+        plot_epsilon_diversity_correlation(data, fid, args.output_dir)
 
     print("All plots generated.")
 

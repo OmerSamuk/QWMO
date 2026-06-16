@@ -144,7 +144,9 @@ def _aggregate_results(raw_results):
 
 def check_criteria(aggregated, funcs, configs, max_fes=300000,
                    epsilon_min_ratio=0.01, adaptive_epsilon_max_ratio=0.15,
-                   search_range=200):
+                   search_range=None):
+    if search_range is None:
+        search_range = 200
     results = {}
 
     adaptive_configs_in_use = [c for c in ADAPTIVE_CONFIGS if c in configs]
@@ -557,7 +559,7 @@ def main():
         aggregated, config['functions'], config['ablation_configs'],
         max_fes=config['max_fes'],
         epsilon_min_ratio=0.01, adaptive_epsilon_max_ratio=0.15,
-        search_range=200,
+        search_range=config.get('search_range', 200),
     )
     report_path = os.path.join(config['output_dir'], config['report_name'])
     write_report(aggregated, criteria, report_path, config['functions'], config['ablation_configs'])
