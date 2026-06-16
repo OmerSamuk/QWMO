@@ -49,19 +49,29 @@ def run_full_experiment(dimensions=None, output_dir='results'):
 
 def save_results(results, output_file):
     serializable_results = {}
-    
+
     for func_key, func_results in results.items():
         serializable_results[func_key] = {}
-        
+
         for algo_name, algo_results in func_results.items():
-            serializable_results[func_key][algo_name] = {
+            entry = {
                 'fitnesses': algo_results.get('fitnesses', []),
                 'mean': algo_results.get('mean'),
                 'std': algo_results.get('std'),
                 'times': algo_results.get('times', []),
-                'mean_time': algo_results.get('mean_time')
+                'mean_time': algo_results.get('mean_time'),
             }
-    
+            for key in [
+                'convergence_list', 'pauli_collision_history_list',
+                'pauli_displacement_history_list', 'pauli_success_history_list',
+                'escape_attempt_history_list', 'escape_success_history_list',
+                'escape_delta_history_list', 'escape_phase_counts_list',
+                'diversity_history_list', 'fes_count_list', 'elapsed_time_list',
+            ]:
+                if key in algo_results:
+                    entry[key] = algo_results[key]
+            serializable_results[func_key][algo_name] = entry
+
     with open(output_file, 'w') as f:
         json.dump(serializable_results, f, indent=2)
 
