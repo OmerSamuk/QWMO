@@ -175,6 +175,7 @@ class QWMO:
                         T_max=T_max,
                         lower_bound=self.lower_bound,
                         upper_bound=self.upper_bound,
+                        dimension=self.dimension,
                         epsilon_mode=self.pauli_epsilon_mode,
                         epsilon_max_ratio=self.epsilon_max_ratio,
                         epsilon_min_ratio=self.epsilon_min_ratio,

@@ -6,20 +6,23 @@ def compute_adaptive_epsilon(
     positions,
     lower_bound,
     upper_bound,
+    dimension,
     k=3,
     lambda0=0.75,
     epsilon_min_ratio=0.01,
     epsilon_max_ratio=0.15,
 ):
-    """Geometry-Adaptive Pauli Radius (GAPR).
+    """Geometry-Adaptive Pauli Radius (GAPR v2).
 
     Computes epsilon from the current population geometry using the mean
-    k-nearest-neighbor distance.
+    k-nearest-neighbor distance normalized by the search-space diagonal
+    Lmax = sqrt(D) * search_range, so epsilon reflects relative density.
     """
     positions = np.asarray(positions)
     n_agents = positions.shape[0]
 
     search_range = upper_bound - lower_bound
+    l_max = np.sqrt(dimension) * search_range
     epsilon_min = epsilon_min_ratio * search_range
     epsilon_max = epsilon_max_ratio * search_range
 
@@ -38,7 +41,8 @@ def compute_adaptive_epsilon(
         kth_distances = distances[:, k_eff]
 
     mean_knn = float(np.mean(kth_distances))
-    epsilon = lambda0 * mean_knn
+    normalized_knn = mean_knn / (l_max + 1e-12)
+    epsilon = lambda0 * normalized_knn * search_range
 
     return float(np.clip(epsilon, epsilon_min, epsilon_max))
 
@@ -58,6 +62,7 @@ def compute_epsilon(
     T_max,
     lower_bound,
     upper_bound,
+    dimension,
     mode="dynamic",
     epsilon_max_ratio=0.1,
     epsilon_min_ratio=0.01,
@@ -84,6 +89,7 @@ def compute_epsilon(
             positions=positions,
             lower_bound=lower_bound,
             upper_bound=upper_bound,
+            dimension=dimension,
             k=adaptive_k,
             lambda0=adaptive_lambda0,
             epsilon_min_ratio=epsilon_min_ratio,
@@ -94,7 +100,7 @@ def compute_epsilon(
 
 
 def pauli_exclusion(agents, evaluate, rng,
-                    t, T_max, lower_bound, upper_bound,
+                    t, T_max, lower_bound, upper_bound, dimension,
                     epsilon_mode='dynamic',
                     epsilon_max_ratio=0.1,
                     epsilon_min_ratio=0.01,
@@ -110,6 +116,7 @@ def pauli_exclusion(agents, evaluate, rng,
         T_max=T_max,
         lower_bound=lower_bound,
         upper_bound=upper_bound,
+        dimension=dimension,
         mode=epsilon_mode,
         epsilon_max_ratio=epsilon_max_ratio,
         epsilon_min_ratio=epsilon_min_ratio,
