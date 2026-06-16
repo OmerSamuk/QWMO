@@ -142,14 +142,17 @@ def _aggregate_results(raw_results):
     return aggregated
 
 
-def check_criteria(aggregated, funcs, configs, max_fes=300000):
+def check_criteria(aggregated, funcs, configs, max_fes=300000,
+                   epsilon_min_ratio=0.01, adaptive_epsilon_max_ratio=0.15,
+                   search_range=200):
     results = {}
 
     adaptive_configs_in_use = [c for c in ADAPTIVE_CONFIGS if c in configs]
     pauli_configs_in_use = [c for c in PAULI_CONFIGS if c in configs]
     escape_configs_in_use = [c for c in ESCAPE_CONFIGS if c in configs]
 
-    search_range = None
+    eps_min = epsilon_min_ratio * search_range
+    eps_max = adaptive_epsilon_max_ratio * search_range
 
     # --- K1: Adaptive epsilon bounded ---
     k1_passed = True
@@ -163,14 +166,23 @@ def check_criteria(aggregated, funcs, configs, max_fes=300000):
             for i, ep_hist in enumerate(ep_list_list):
                 if not ep_hist:
                     k1_passed = False
-                    k1_evidence.append(f"  {fkey}/{cfg}/seed_{i}: epsilon_history empty")
+                    k1_evidence.append(f"  {fkey}/{cfg}/seed_{i}: FAIL (epsilon_history empty)")
                     continue
                 min_ep = min(ep_hist)
                 max_ep = max(ep_hist)
                 mean_ep = np.mean(ep_hist)
-                k1_evidence.append(
-                    f"  {fkey}/{cfg}/seed_{i}: min={min_ep:.6e} max={max_ep:.6e} mean={mean_ep:.6e}"
-                )
+                out_of_bounds = sum(1 for e in ep_hist if e < eps_min - 1e-12 or e > eps_max + 1e-12)
+                if out_of_bounds > 0:
+                    k1_passed = False
+                    k1_evidence.append(
+                        f"  {fkey}/{cfg}/seed_{i}: FAIL ({out_of_bounds}/{len(ep_hist)} values "
+                        f"outside [{eps_min:.4e}, {eps_max:.4e}])"
+                    )
+                else:
+                    k1_evidence.append(
+                        f"  {fkey}/{cfg}/seed_{i}: PASS (min={min_ep:.6e} max={max_ep:.6e} "
+                        f"mean={mean_ep:.6e} all within [{eps_min:.4e}, {eps_max:.4e}])"
+                    )
     results['K1'] = {
         'description': 'Adaptive epsilon bounded (epsilon_min <= epsilon[t] <= epsilon_max)',
         'passed': k1_passed,
@@ -239,11 +251,12 @@ def check_criteria(aggregated, funcs, configs, max_fes=300000):
         'evidence': '\n'.join(k3_evidence) if k3_evidence else '  No comparable configs found.',
     }
 
-    # --- K4: Adaptive Pauli active ---
-    k4_passed = False
+    # --- K4: Adaptive Pauli active (per-function) ---
+    k4_passed = True
     k4_evidence = []
     for fid in funcs:
         fkey = f'F{fid}'
+        f_passed = False
         for cfg in adaptive_configs_in_use:
             if cfg not in aggregated.get(fkey, {}):
                 continue
@@ -252,9 +265,12 @@ def check_criteria(aggregated, funcs, configs, max_fes=300000):
             )
             k4_evidence.append(f"  {fkey}/{cfg}: total displacements = {disp_total}")
             if disp_total > 0:
-                k4_passed = True
+                f_passed = True
+        if not f_passed:
+            k4_passed = False
+            k4_evidence.append(f"  {fkey}: FAIL — no adaptive config with displacement > 0")
     results['K4'] = {
-        'description': 'Adaptive Pauli active (total displacement > 0 in every function)',
+        'description': 'Adaptive Pauli active (each function has >=1 adaptive config with displacement > 0)',
         'passed': k4_passed,
         'evidence': '\n'.join(k4_evidence) if k4_evidence else '  No adaptive Pauli configs found.',
     }
@@ -387,7 +403,7 @@ def write_report(aggregated, criteria, output_path, funcs, configs):
     lines.append('')
     lines.append(f'**Functions:** {funcs}  ')
     lines.append(f'**Configs:** {len(configs)} ({", ".join(configs)})  ')
-    lines.append(f'**Seeds:** {len(configs)} (1-10)  ')
+    lines.append(f'**Seeds:** 10 (1-10)  ')
     lines.append(f'**Dimension:** 30  ')
     lines.append(f'**Max FEs:** 300,000  ')
     lines.append(f'**Adaptive params:** k=3, lambda0=0.75, eps_max_ratio=0.15, eps_min_ratio=0.01')
@@ -539,7 +555,9 @@ def main():
     aggregated, json_path = run_pilot(config, max_workers=args.max_workers)
     criteria = check_criteria(
         aggregated, config['functions'], config['ablation_configs'],
-        max_fes=config['max_fes']
+        max_fes=config['max_fes'],
+        epsilon_min_ratio=0.01, adaptive_epsilon_max_ratio=0.15,
+        search_range=200,
     )
     report_path = os.path.join(config['output_dir'], config['report_name'])
     write_report(aggregated, criteria, report_path, config['functions'], config['ablation_configs'])

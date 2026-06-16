@@ -1,6 +1,5 @@
 import numpy as np
 from core.kdtree_util import build_kdtree, query_pairs
-from core.qwmo import BudgetExceeded
 
 
 def compute_adaptive_epsilon(

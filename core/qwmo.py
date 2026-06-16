@@ -218,14 +218,14 @@ class QWMO:
                         new_fitness = self._evaluate(new_position)
                     except BudgetExceeded:
                         break
-                    delta = agent.fitness - new_fitness
-                    success = new_fitness < agent.fitness
+                    old_fitness = agent.fitness
+                    delta = old_fitness - new_fitness
                     agent.position = new_position
                     agent.fitness = new_fitness
                     agent.stagnation_count = 0
-                    escape_successes += 1
                     delta_sum += delta
-                    if success:
+                    if new_fitness < old_fitness:
+                        escape_successes += 1
                         self.escape_phase_counts[phase] += 1
                     if agent.fitness < self.best_agent.fitness:
                         self.best_agent = agent.copy()

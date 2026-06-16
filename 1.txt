@@ -1,0 +1,76 @@
+## Goal
+- QWMO repo'daki 30D GCP koşusu başarısız sonuç vermişti; Aşama 1 kod fix'leri + Aşama 2 pilot validation uygulandı, tüm 6 K kriteri PASS oldu → şimdi GitHub repo'yu güncelle ve VM'i durdur.
+
+## Constraints & Preferences
+- Aşama 1 + Aşama 2 pilot yeterli; Aşama 3 (long-budget 3M FE) şimdilik yok
+- FE protokolü: CEC-standard 10,000·D (300k FE @ 30D)
+- epsilon_r planda yok → silindi (dead code)
+- Commit kapsamı: yalnız 12 modified + pilot_validation.py; result/, ai-reviewer-notes.md, chatgpt_qwmo_d30_analysis_report.md, opencode.json commit dışı
+- Push: `perf/cec-standard-budget` branch'ına
+- VM: durdur (RUNNING durumda, europe-west1-c)
+
+## Progress
+### Done
+- Aşama 1A: `core/qwmo.py` (RNG default_rng, _evaluate wrapper, BudgetExceeded, 6 ablation config dispatch, 11-tuple mechanism log), `operators/pauli.py` (fitness re-eval + budget guard + (coll,disp,succ) 3'lü return), `operators/escape.py` (kappa_0/k_s ayrımı + RNG), `operators/orbital.py` (RNG)
+- Aşama 1A.7: `baselines/{aso,aos,qpso}.py` — default_rng
+- Aşama 1B: `analysis/stats.py` — A12 minimization yönü (A12_control_better/A12_QWMO_better), `friedman_test_across_functions` (blocks=functions, Holm post-hoc), `wilcoxon_per_function`, `a12_per_function`; `analysis/__init__.py` alias
+- Aşama 1C: `experiments/config.py` (epsilon_r silindi, static_epsilon_ratio=0.05, ABLATION_CONFIGS 6 konfig, PILOT_CONFIG); `experiments/runner.py` (ALGO_TO_QWMO_CONFIG dispatch, QWMO_MECHANISM_KEYS, _accumulate_result); `experiments/run_experiments.py` save_results güncellendi
+- Aşama 2: `experiments/pilot_validation.py` yazıldı; GCP VM `qwmo-v2` (europe-west1-c, 16 vCPU) restart edildi; tarball ile kod yüklendi; 240 task pilot (F1/F3/F10/F20 × 6 config × 10 seed, 300k FE) ~25 dk'da tamamlandı; pilot_validation.py:417-420 duplicate `for kid` loop silindi (NameError düzeltildi); report regenerate edildi
+- **Pilot sonucu: 6/6 K PASS** (K1 Pauli aktif, K2 OrbitalPauli≠OrbitalOnly, K3 Static≠Dynamic, K4 Escape log, K5 FE budget, K6 Diversity)
+- `result/pilot_validation_report.md` (3.7 KB) local'e indirildi; `result/pilot_D30.json` (113 MB) VM'de `/home/omers/QWMO/result/`
+
+### In Progress
+- GitHub commit + push (plan onaylandı, henüz uygulanmadı)
+
+### Blocked
+- (none)
+
+## Key Decisions
+- VM'de çalışan iki duplicate pilot process kill edildi (pkill -9 -f pilot_validation)
+- `analysis/__init__.py` geriye dönük alias eklendi (friedman_test → friedman_test_per_function, vb.)
+- Static vs dynamic ε ayrımı için ablation isimleri `QWMO_OrbitalPauli_Static/Dynamic`, `QWMO_Full_Static/Dynamic` olarak rename edildi
+- Escape phase_counts `{'early': 0, 'mid': 0, 'late': 0}` dict olarak aggregate tutuluyor; `escape_attempt/success/delta_history` per-iterasyon liste
+- Pauli collision_count = len(pairs), displacement_count = budget-izinli yer değiştirmeler, success_count = fitness iyileşen displacement'lar
+- `max_fes=3000000` QWMO default kaldı (Q1 plan uyumu); pilot'ta 300k kullanıldı
+
+## Next Steps
+1. Geçici dosyaları sil: `_vm_*.sh`, `_qwmo_changes.tar.gz`
+2. `.gitignore` güncelle: `result/`, `_*.sh`, `_*.tar.gz` ekle
+3. 12 modified + 1 new file (`pilot_validation.py`) stage et
+4. Commit (yukarıdaki detaylı mesajla)
+5. `git push origin perf/cec-standard-budget`
+6. `gcloud compute instances stop qwmo-v2 --zone=europe-west1-c --project=qwmo-framework`
+7. Kullanıcının ChatGPT/Claude analizinden gelecek talimatları bekle
+
+## Critical Context
+- **VM ssh bağlantısı aralıklı kesiliyor** (gcloud HTTPSConnectionPool Max retries / NameResolutionError); retry ile çalışıyor
+- **pscp path parsing**: Windows'ta `~` ve absolute path sorunlu; dosya isimleri göreli olmalı, sonra VM'de `mv` ile taşı
+- **Pilot log buffering**: stdout file'a yönlendirildiğinde block-buffered; flush olmadan log takip edilemiyor (ama process'ler aktif)
+- **PowerShell `$()` expansion**: VM komutları tek-tırnak içinde PS tarafından expand ediliyor; workaround: script dosyası yaz + `bash script.sh`
+- **Aşama 1 dosya yedekleme VM'de**: `~/QWMO/.backup_v1.2.0/` altında orijinal dosyalar
+- **Pilot final fitness** (mean, 10 seed, 30D, 300k FE): F3 Full_Static 1.32e+04 (best); F1 Full Dynamic 2.10e+07 (worst); F1'de escape hâlâ 10× bozucu
+- **Pauli artık çalışıyor**: F1 OrbitalPauli_Static 10,950 displacement; F10 Full_Dynamic 2,365
+- **K2/K3 byte-identical değil**: F1 10/10 seed farklı; F3 3/10; F10 2/10; F20 8/10
+- **Git durumu**: branch `perf/cec-standard-budget`, remote `https://github.com/OmerSamuk/QWMO.git`, user OmerSamuk/offical.samuk@gmail.com
+
+## Relevant Files
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\core\qwmo.py`: 6 ablation config dispatch, _evaluate wrapper, BudgetExceeded, 11-tuple mechanism log
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\operators\pauli.py`: fitness re-eval + budget guard + (coll,disp,succ) return + rng
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\operators\escape.py`: kappa_0/k_s ayrı parametre, rng
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\operators\orbital.py`: rng parametresi
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\baselines\aso.py,aos.py,qpso.py`: default_rng
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\experiments\config.py`: epsilon_r silindi, ABLATION_CONFIGS 6 konfig, PILOT_CONFIG
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\experiments\runner.py`: ALGO_TO_QWMO_CONFIG, QWMO_MECHANISM_KEYS, _accumulate_result
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\experiments\run_experiments.py`: save_results genişletildi
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\experiments\pilot_validation.py`: yeni dosya, 240-task pilot runner + K1-K6 check + markdown report
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\analysis\stats.py`: A12 minimization yönü, friedman_test_across_functions
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\analysis\__init__.py`: geriye dönük alias
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\result\pilot_validation_report.md`: indirilen 3.7 KB rapor (commit dışı)
+- VM `/home/omers/QWMO/result/pilot_D30.json`: 113 MB ham sonuç (commit dışı, indirilmedi)
+- VM `/home/omers/QWMO/.backup_v1.2.0/`: orijinal 13 dosya yedek
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\ai-reviewer-notes.md`: ChatGPT'nin plan değerlendirmesi (commit dışı, kullanıcı analiz için)
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\chatgpt_qwmo_d30_analysis_report.md`: D30 analiz raporu (commit dışı)
+- `C:\Users\omers\OneDrive\Masaüstü\qwmo-workspace\.gitignore`: `result/`, `_*.sh`, `_*.tar.gz` eklenecek
+
+---
+

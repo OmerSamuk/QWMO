@@ -1,0 +1,120 @@
+İnceledim. **GAPR branch doğru yönde ama şu haliyle pilot çalıştırmadan önce iki blocker düzeltme gerekiyor.**
+
+## Karar
+
+**Merge / pilot için henüz onaylamıyorum.**
+Puan: **8.1 / 10**
+Aşağıdaki iki kritik düzeltmeden sonra: **9.2 / 10**
+
+## Güçlü taraflar
+
+GAPR matematiği eklenmiş: `compute_adaptive_epsilon`, kNN ortalama mesafesini alıp `lambda0 * mean_knn` değerini `epsilon_min / epsilon_max` aralığına clip ediyor. Bu tam istediğimiz Aday-A formülü.
+
+`QWMO` artık `orbital_pauli_adaptive` ve `full_adaptive` konfigürasyonlarını tanıyor; `epsilon_history`, `escape_executed_history` ve adaptive parametreleri eklenmiş.
+
+`runner.py` adaptive configleri ve yeni mechanism loglarını sonuçlara aktarıyor.
+
+`GAPR_PILOT_CONFIG` doğru: F10/F20, 30D, 300k FE, 10 seed, 8 QWMO varyantı.
+
+Pilot script K1–K9 kriterlerini ve raporu üretmek üzere yazılmış.
+
+---
+
+## Blocker 1 — Circular import riski
+
+`operators/pauli.py` içinde şu satır var:
+
+```python
+from core.qwmo import BudgetExceeded
+```
+
+Ama `core/qwmo.py` da şunu yapıyor:
+
+```python
+from operators.pauli import pauli_exclusion
+```
+
+Bu circular import yaratır. Üstelik `BudgetExceeded` `pauli.py` içinde kullanılmıyor.
+
+**Düzeltme:**
+
+`operators/pauli.py` içinden şu satırı sil:
+
+```python
+from core.qwmo import BudgetExceeded
+```
+
+---
+
+## Blocker 2 — Escape success hâlâ yanlış sayılıyor
+
+`QWMO.run()` içinde:
+
+```python
+success = new_fitness < agent.fitness
+...
+escape_successes += 1
+...
+if success:
+    self.escape_phase_counts[phase] += 1
+```
+
+Burada `escape_successes` her executed escape için artıyor; gerçek fitness iyileşmesi için değil. Bu yüzden raporda “success” hâlâ “executed” gibi okunabilir.
+
+**Düzeltme:**
+
+```python
+old_fitness = agent.fitness
+new_fitness = self._evaluate(new_position)
+delta = old_fitness - new_fitness
+
+agent.position = new_position
+agent.fitness = new_fitness
+agent.stagnation_count = 0
+
+delta_sum += delta
+
+if new_fitness < old_fitness:
+    escape_successes += 1
+    self.escape_phase_counts[phase] += 1
+```
+
+`escape_executed` zaten ayrı tutuluyor; bu iyi.
+
+---
+
+## Orta seviye düzeltmeler
+
+1. `gapr_pilot_validation.py` K1 sadece min/max raporluyor, gerçekten `epsilon_min <= epsilon <= epsilon_max` kontrolü yapmıyor. Açık bound check eklenmeli.
+
+2. K4 açıklaması “her function’da displacement > 0” diyor ama kod herhangi bir yerde displacement > 0 olunca pass ediyor. Her fonksiyon için adaptive configlerden en az birinin displacement üretmesi şart koşulmalı.
+
+3. Rapor başlığında seed sayısı yanlış yazılıyor:
+
+```python
+lines.append(f'**Seeds:** {len(configs)} (1-10)  ')
+```
+
+Bu `len(configs)` değil, `10` veya `len(seeds)` olmalı.
+
+4. `run_full_experiment()` default algorithm listesinde adaptive varyantlar yok. Bu pilot için sorun değil, ama GAPR başarılı olursa full run default listesine `QWMO_OrbitalPauli_Adaptive` ve `QWMO_Full_Adaptive` eklenmeli.
+
+---
+
+## Nihai önerim
+
+Önce şu 4 küçük düzeltmeyi yap:
+
+1. `pauli.py` circular import satırını sil.
+2. `escape_successes` sadece gerçek iyileşmede artsın.
+3. K1 ve K4 pass/fail mantığını sıkılaştır.
+4. Rapor seed satırını düzelt.
+
+Sonra çalıştır:
+
+```bash
+python experiments/gapr_pilot_validation.py --max-workers 8
+python analysis/gapr_plots.py --input results/gapr_pilot/gapr_pilot_D30.json --output-dir results/gapr_pilot/figures
+```
+
+Bu düzeltmelerden sonra GAPR pilotunu değerlendirmeye hazır oluruz.
