@@ -1,5 +1,47 @@
 import numpy as np
 from core.kdtree_util import build_kdtree, query_pairs
+from core.qwmo import BudgetExceeded
+
+
+def compute_adaptive_epsilon(
+    positions,
+    lower_bound,
+    upper_bound,
+    k=3,
+    lambda0=0.75,
+    epsilon_min_ratio=0.01,
+    epsilon_max_ratio=0.15,
+):
+    """Geometry-Adaptive Pauli Radius (GAPR).
+
+    Computes epsilon from the current population geometry using the mean
+    k-nearest-neighbor distance.
+    """
+    positions = np.asarray(positions)
+    n_agents = positions.shape[0]
+
+    search_range = upper_bound - lower_bound
+    epsilon_min = epsilon_min_ratio * search_range
+    epsilon_max = epsilon_max_ratio * search_range
+
+    if n_agents <= 1:
+        return float(epsilon_min)
+
+    k_eff = min(k, n_agents - 1)
+
+    tree = build_kdtree(positions)
+    distances, _ = tree.query(positions, k=k_eff + 1)
+
+    distances = np.asarray(distances)
+    if distances.ndim == 1:
+        kth_distances = distances
+    else:
+        kth_distances = distances[:, k_eff]
+
+    mean_knn = float(np.mean(kth_distances))
+    epsilon = lambda0 * mean_knn
+
+    return float(np.clip(epsilon, epsilon_min, epsilon_max))
 
 
 def compute_dynamic_epsilon(t, T_max, lower_bound, upper_bound,
@@ -11,24 +53,74 @@ def compute_dynamic_epsilon(t, T_max, lower_bound, upper_bound,
     return epsilon_t
 
 
-def pauli_exclusion(agents, func, fes_counter, max_fes, rng,
+def compute_epsilon(
+    positions,
+    t,
+    T_max,
+    lower_bound,
+    upper_bound,
+    mode="dynamic",
+    epsilon_max_ratio=0.1,
+    epsilon_min_ratio=0.01,
+    static_epsilon_ratio=0.05,
+    adaptive_k=3,
+    adaptive_lambda0=0.75,
+    adaptive_epsilon_max_ratio=0.15,
+):
+    if mode == "static":
+        return float(static_epsilon_ratio * (upper_bound - lower_bound))
+
+    if mode == "dynamic":
+        return compute_dynamic_epsilon(
+            t=t,
+            T_max=T_max,
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
+            epsilon_max_ratio=epsilon_max_ratio,
+            epsilon_min_ratio=epsilon_min_ratio,
+        )
+
+    if mode == "adaptive":
+        return compute_adaptive_epsilon(
+            positions=positions,
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
+            k=adaptive_k,
+            lambda0=adaptive_lambda0,
+            epsilon_min_ratio=epsilon_min_ratio,
+            epsilon_max_ratio=adaptive_epsilon_max_ratio,
+        )
+
+    raise ValueError(f"Unknown epsilon mode: {mode}")
+
+
+def pauli_exclusion(agents, evaluate, rng,
                     t, T_max, lower_bound, upper_bound,
                     epsilon_mode='dynamic',
                     epsilon_max_ratio=0.1,
                     epsilon_min_ratio=0.01,
-                    static_epsilon_ratio=0.05):
-    search_range = upper_bound - lower_bound
-    if epsilon_mode == 'static':
-        epsilon_t = static_epsilon_ratio * search_range
-    else:
-        epsilon_t = compute_dynamic_epsilon(
-            t, T_max, lower_bound, upper_bound,
-            epsilon_max_ratio, epsilon_min_ratio
-        )
-
+                    static_epsilon_ratio=0.05,
+                    adaptive_k=3,
+                    adaptive_lambda0=0.75,
+                    adaptive_epsilon_max_ratio=0.15):
     positions = np.array([agent.position for agent in agents])
-    kdtree = build_kdtree(positions)
 
+    epsilon_t = compute_epsilon(
+        positions=positions,
+        t=t,
+        T_max=T_max,
+        lower_bound=lower_bound,
+        upper_bound=upper_bound,
+        mode=epsilon_mode,
+        epsilon_max_ratio=epsilon_max_ratio,
+        epsilon_min_ratio=epsilon_min_ratio,
+        static_epsilon_ratio=static_epsilon_ratio,
+        adaptive_k=adaptive_k,
+        adaptive_lambda0=adaptive_lambda0,
+        adaptive_epsilon_max_ratio=adaptive_epsilon_max_ratio,
+    )
+
+    kdtree = build_kdtree(positions)
     pairs = query_pairs(kdtree, epsilon_t)
 
     collision_count = len(pairs)
@@ -36,9 +128,6 @@ def pauli_exclusion(agents, func, fes_counter, max_fes, rng,
     success_count = 0
 
     for i, j in pairs:
-        if fes_counter[0] >= max_fes:
-            break
-
         if agents[i].fitness > agents[j].fitness:
             weaker_idx, stronger_idx = i, j
         else:
@@ -64,8 +153,7 @@ def pauli_exclusion(agents, func, fes_counter, max_fes, rng,
         new_position = np.clip(new_position, lower_bound, upper_bound)
 
         old_fitness = agents[weaker_idx].fitness
-        new_fitness = func(new_position)
-        fes_counter[0] += 1
+        new_fitness = evaluate(new_position)
 
         agents[weaker_idx].position = new_position
         agents[weaker_idx].fitness = new_fitness
@@ -75,4 +163,9 @@ def pauli_exclusion(agents, func, fes_counter, max_fes, rng,
         if new_fitness < old_fitness:
             success_count += 1
 
-    return collision_count, displacement_count, success_count
+    return {
+        "epsilon": epsilon_t,
+        "collision_count": collision_count,
+        "displacement_count": displacement_count,
+        "success_count": success_count,
+    }

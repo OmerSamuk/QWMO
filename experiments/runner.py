@@ -20,10 +20,12 @@ ALGO_TO_QWMO_CONFIG = {
     'QWMO_Full': 'full_dynamic',
     'QWMO_Full_Static': 'full_static',
     'QWMO_Full_Dynamic': 'full_dynamic',
+    'QWMO_Full_Adaptive': 'full_adaptive',
     'QWMO_OrbitalOnly': 'orbital_only',
     'QWMO_OrbitalPauli': 'orbital_pauli_dynamic',
     'QWMO_OrbitalPauli_Static': 'orbital_pauli_static',
     'QWMO_OrbitalPauli_Dynamic': 'orbital_pauli_dynamic',
+    'QWMO_OrbitalPauli_Adaptive': 'orbital_pauli_adaptive',
     'QWMO_OrbitalEscape': 'orbital_escape',
 }
 
@@ -33,7 +35,9 @@ QWMO_MECHANISM_KEYS = [
     'pauli_collision_history',
     'pauli_displacement_history',
     'pauli_success_history',
+    'epsilon_history',
     'escape_attempt_history',
+    'escape_executed_history',
     'escape_success_history',
     'escape_delta_history',
     'escape_phase_counts',
@@ -76,6 +80,9 @@ class ExperimentRunner:
             epsilon_max_ratio=0.1,
             epsilon_min_ratio=0.01,
             static_epsilon_ratio=0.05,
+            adaptive_k=3,
+            adaptive_lambda0=0.75,
+            adaptive_epsilon_max_ratio=0.15,
             ablation_config=ablation_config,
             seed=seed
         )
@@ -93,7 +100,9 @@ class ExperimentRunner:
             'pauli_collision_history': optimizer.pauli_collision_history,
             'pauli_displacement_history': optimizer.pauli_displacement_history,
             'pauli_success_history': optimizer.pauli_success_history,
+            'epsilon_history': optimizer.epsilon_history,
             'escape_attempt_history': optimizer.escape_attempt_history,
+            'escape_executed_history': optimizer.escape_executed_history,
             'escape_success_history': optimizer.escape_success_history,
             'escape_delta_history': optimizer.escape_delta_history,
             'escape_phase_counts': optimizer.escape_phase_counts,

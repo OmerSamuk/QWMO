@@ -14,9 +14,11 @@ class QWMO:
         'orbital_only',
         'orbital_pauli_static',
         'orbital_pauli_dynamic',
+        'orbital_pauli_adaptive',
         'orbital_escape',
         'full_static',
         'full_dynamic',
+        'full_adaptive',
     }
 
     def __init__(self, func, dimension, lower_bound, upper_bound,
@@ -25,6 +27,8 @@ class QWMO:
                  k_s=10, eta_r=0.001,
                  epsilon_max_ratio=0.1, epsilon_min_ratio=0.01,
                  static_epsilon_ratio=0.05,
+                 adaptive_k=3, adaptive_lambda0=0.75,
+                 adaptive_epsilon_max_ratio=0.15,
                  ablation_config='full_dynamic', seed=None):
         if ablation_config not in self.ABLATION_CONFIGS:
             raise ValueError(
@@ -46,21 +50,32 @@ class QWMO:
         self.epsilon_max_ratio = epsilon_max_ratio
         self.epsilon_min_ratio = epsilon_min_ratio
         self.static_epsilon_ratio = static_epsilon_ratio
+        self.adaptive_k = adaptive_k
+        self.adaptive_lambda0 = adaptive_lambda0
+        self.adaptive_epsilon_max_ratio = adaptive_epsilon_max_ratio
         self.ablation_config = ablation_config
 
         self.use_pauli = ablation_config in (
             'orbital_pauli_static',
             'orbital_pauli_dynamic',
+            'orbital_pauli_adaptive',
             'full_static',
             'full_dynamic',
+            'full_adaptive',
         )
-        self.pauli_epsilon_mode = (
-            'static' if 'static' in ablation_config else 'dynamic'
-        )
+        if 'adaptive' in ablation_config:
+            self.pauli_epsilon_mode = 'adaptive'
+        elif 'static' in ablation_config:
+            self.pauli_epsilon_mode = 'static'
+        elif 'dynamic' in ablation_config:
+            self.pauli_epsilon_mode = 'dynamic'
+        else:
+            self.pauli_epsilon_mode = None
         self.use_escape = ablation_config in (
             'orbital_escape',
             'full_static',
             'full_dynamic',
+            'full_adaptive',
         )
 
         self.rng = np.random.default_rng(seed)
@@ -74,8 +89,10 @@ class QWMO:
         self.pauli_collision_history = []
         self.pauli_displacement_history = []
         self.pauli_success_history = []
+        self.epsilon_history = []
 
         self.escape_attempt_history = []
+        self.escape_executed_history = []
         self.escape_success_history = []
         self.escape_delta_history = []
         self.escape_phase_counts = {'early': 0, 'mid': 0, 'late': 0}
@@ -149,20 +166,30 @@ class QWMO:
                     self.best_agent = agent.copy()
 
             if self.use_pauli:
-                fes_counter = [self.fes_count]
-                coll, disp, succ = pauli_exclusion(
-                    self.agents, self._evaluate, fes_counter, self.max_fes,
-                    self.rng, t, T_max,
-                    self.lower_bound, self.upper_bound,
-                    epsilon_mode=self.pauli_epsilon_mode,
-                    epsilon_max_ratio=self.epsilon_max_ratio,
-                    epsilon_min_ratio=self.epsilon_min_ratio,
-                    static_epsilon_ratio=self.static_epsilon_ratio,
-                )
-                self.fes_count = fes_counter[0]
-                self.pauli_collision_history.append(coll)
-                self.pauli_displacement_history.append(disp)
-                self.pauli_success_history.append(succ)
+                try:
+                    pauli_info = pauli_exclusion(
+                        agents=self.agents,
+                        evaluate=self._evaluate,
+                        rng=self.rng,
+                        t=t,
+                        T_max=T_max,
+                        lower_bound=self.lower_bound,
+                        upper_bound=self.upper_bound,
+                        epsilon_mode=self.pauli_epsilon_mode,
+                        epsilon_max_ratio=self.epsilon_max_ratio,
+                        epsilon_min_ratio=self.epsilon_min_ratio,
+                        static_epsilon_ratio=self.static_epsilon_ratio,
+                        adaptive_k=self.adaptive_k,
+                        adaptive_lambda0=self.adaptive_lambda0,
+                        adaptive_epsilon_max_ratio=self.adaptive_epsilon_max_ratio,
+                    )
+                except BudgetExceeded:
+                    break
+
+                self.epsilon_history.append(pauli_info["epsilon"])
+                self.pauli_collision_history.append(pauli_info["collision_count"])
+                self.pauli_displacement_history.append(pauli_info["displacement_count"])
+                self.pauli_success_history.append(pauli_info["success_count"])
 
                 for agent in self.agents:
                     if agent.fitness < self.best_agent.fitness:
@@ -170,6 +197,7 @@ class QWMO:
 
             if self.use_escape:
                 escape_attempts = 0
+                escape_executed = 0
                 escape_successes = 0
                 delta_sum = 0.0
                 phase = self._escape_phase(t, T_max)
@@ -185,6 +213,7 @@ class QWMO:
                     )
                     if new_position is None:
                         continue
+                    escape_executed += 1
                     try:
                         new_fitness = self._evaluate(new_position)
                     except BudgetExceeded:
@@ -202,9 +231,10 @@ class QWMO:
                         self.best_agent = agent.copy()
 
                 self.escape_attempt_history.append(escape_attempts)
+                self.escape_executed_history.append(escape_executed)
                 self.escape_success_history.append(escape_successes)
                 mean_delta = (
-                    delta_sum / escape_successes if escape_successes > 0 else 0.0
+                    delta_sum / escape_executed if escape_executed > 0 else 0.0
                 )
                 self.escape_delta_history.append(mean_delta)
 
