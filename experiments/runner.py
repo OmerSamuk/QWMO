@@ -8,12 +8,51 @@ from core.qwmo import QWMO
 from baselines.aso import ASO
 from baselines.aos import AOS
 from baselines.qpso import QPSO
-from mealpy.swarm_based.PSO import OriginalPSO
-from mealpy.evolutionary_based.GA import OriginalGA
-from mealpy.swarm_based.GWO import OriginalGWO
-from mealpy.swarm_based.HHO import OriginalHHO
-from mealpy.evolutionary_based.SHADE import OriginalSHADE
 import cma
+
+
+def _import_mealpy_algorithm(algorithm_name):
+    """Lazy loader for mealpy baseline algorithms.
+
+    Different mealpy versions expose algorithms at different paths (e.g.
+    ``mealpy.evolutionary_based.GA.OriginalGA`` was renamed/moved in
+    newer releases). This function attempts a sequence of known import
+    paths and returns the resolved class.
+    """
+    candidates = {
+        'PSO': [
+            ('mealpy.swarm_based.PSO', 'OriginalPSO'),
+            ('mealpy.swarm_based.PSO', 'PSO'),
+        ],
+        'GA': [
+            ('mealpy.evolutionary_based.GA', 'OriginalGA'),
+            ('mealpy.evolutionary_based.GA', 'GA'),
+        ],
+        'GWO': [
+            ('mealpy.swarm_based.GWO', 'OriginalGWO'),
+            ('mealpy.swarm_based.GWO', 'GWO'),
+        ],
+        'HHO': [
+            ('mealpy.swarm_based.HHO', 'OriginalHHO'),
+            ('mealpy.swarm_based.HHO', 'HHO'),
+        ],
+        'SHADE': [
+            ('mealpy.evolutionary_based.SHADE', 'OriginalSHADE'),
+            ('mealpy.evolutionary_based.SHADE', 'SHADE'),
+        ],
+    }
+    last_error = None
+    for module_name, class_name in candidates[algorithm_name]:
+        try:
+            module = __import__(module_name, fromlist=[class_name])
+            return getattr(module, class_name)
+        except (ImportError, AttributeError) as exc:
+            last_error = exc
+    raise ImportError(
+        f'Could not import {algorithm_name} from mealpy. Tried: '
+        + ', '.join(f'{m}.{c}' for m, c in candidates[algorithm_name])
+        + f'. Last error: {last_error}'
+    )
 
 
 ALGO_TO_QWMO_CONFIG = {
@@ -186,10 +225,12 @@ class ExperimentRunner:
             'elapsed_time': elapsed
         }
 
-    def run_mealpy_algorithm(self, benchmark, algorithm_class, seed=None):
+    def run_mealpy_algorithm(self, benchmark, algorithm_name, seed=None):
         import contextlib
         import io
         from mealpy import Problem, FloatVar
+
+        algorithm_class = _import_mealpy_algorithm(algorithm_name)
 
         bounds = [FloatVar(lb=benchmark.lower_bound, ub=benchmark.upper_bound, name=f"x{i}")
                   for i in range(self.dimensions)]
@@ -284,15 +325,15 @@ class ExperimentRunner:
         elif algorithm_name == 'QPSO':
             return self.run_qpso(benchmark, seed)
         elif algorithm_name == 'PSO':
-            return self.run_mealpy_algorithm(benchmark, OriginalPSO, seed)
+            return self.run_mealpy_algorithm(benchmark, 'PSO', seed)
         elif algorithm_name == 'GA':
-            return self.run_mealpy_algorithm(benchmark, OriginalGA, seed)
+            return self.run_mealpy_algorithm(benchmark, 'GA', seed)
         elif algorithm_name == 'GWO':
-            return self.run_mealpy_algorithm(benchmark, OriginalGWO, seed)
+            return self.run_mealpy_algorithm(benchmark, 'GWO', seed)
         elif algorithm_name == 'HHO':
-            return self.run_mealpy_algorithm(benchmark, OriginalHHO, seed)
+            return self.run_mealpy_algorithm(benchmark, 'HHO', seed)
         elif algorithm_name == 'SHADE':
-            return self.run_mealpy_algorithm(benchmark, OriginalSHADE, seed)
+            return self.run_mealpy_algorithm(benchmark, 'SHADE', seed)
         elif algorithm_name == 'CMA_ES':
             return self.run_cma_es(benchmark, seed)
         else:
