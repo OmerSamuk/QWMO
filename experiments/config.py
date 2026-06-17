@@ -38,6 +38,7 @@ ABLATION_CONFIGS = [
     'QWMO_Full_Dynamic',
     'QWMO_Full_Adaptive',
     'QWMO_Full_GAPR',
+    'QWMO_Full_GAPR_eps010',
 ]
 
 DEPRECATED_ALIASES = {
@@ -131,6 +132,38 @@ GAPR_COMPREHENSIVE_PILOT_CONFIG = {
     "validation_report_name": "validation_report.md",
     "decision_name": "pilot_decision.md",
     "summary_csv_name": "pilot_summary.csv",
+    "figures_subdirs": {
+        "convergence": "convergence",
+        "diversity": "diversity",
+        "epsilon": "epsilon",
+        "pauli": "pauli",
+    },
+}
+
+GAPR_REVISION_PILOT_CONFIG = {
+    "functions": [5, 10, 15, 20, 23],
+    "dimension": 30,
+    "population_size": 50,
+    "max_fes": 300_000,
+    "seeds": list(range(1, 11)),
+    "search_range": 200,
+    "ablation_configs": [
+        "QWMO_OrbitalEscape",
+        "QWMO_Full_Static",
+        "QWMO_Full_Dynamic",
+        "QWMO_Full_GAPR_eps010",
+    ],
+    "gapr_override": {
+        "adaptive_epsilon_max_ratio": 0.10,
+        "adaptive_lambda0": 0.75,
+        "adaptive_k": 3,
+    },
+    "output_dir": "results/gapr_revision_pilot_eps010",
+    "json_name": "revision_pilot_results.json",
+    "report_name": "revision_pilot_report.md",
+    "validation_report_name": "revision_validation_report.md",
+    "decision_name": "revision_decision.md",
+    "summary_csv_name": "revision_summary.csv",
     "figures_subdirs": {
         "convergence": "convergence",
         "diversity": "diversity",

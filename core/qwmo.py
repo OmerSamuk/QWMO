@@ -9,19 +9,22 @@ class BudgetExceeded(Exception):
     pass
 
 
+ABLATION_CONFIGS = {
+    'orbital_only',
+    'orbital_pauli_static',
+    'orbital_pauli_dynamic',
+    'orbital_pauli_adaptive',
+    'orbital_pauli_gapr',
+    'orbital_escape',
+    'full_static',
+    'full_dynamic',
+    'full_adaptive',
+    'full_gapr',
+    'full_gapr_eps010',
+}
+
+
 class QWMO:
-    ABLATION_CONFIGS = {
-        'orbital_only',
-        'orbital_pauli_static',
-        'orbital_pauli_dynamic',
-        'orbital_pauli_adaptive',
-        'orbital_pauli_gapr',
-        'orbital_escape',
-        'full_static',
-        'full_dynamic',
-        'full_adaptive',
-        'full_gapr',
-    }
 
     def __init__(self, func, dimension, lower_bound, upper_bound,
                  population_size=50, max_fes=3000000,
@@ -32,9 +35,9 @@ class QWMO:
                  adaptive_k=3, adaptive_lambda0=0.75,
                  adaptive_epsilon_max_ratio=0.15,
                  ablation_config='full_dynamic', seed=None):
-        if ablation_config not in self.ABLATION_CONFIGS:
+        if ablation_config not in ABLATION_CONFIGS:
             raise ValueError(
-                f"ablation_config must be one of {sorted(self.ABLATION_CONFIGS)}, "
+                f"ablation_config must be one of {sorted(ABLATION_CONFIGS)}, "
                 f"got '{ablation_config}'"
             )
 
@@ -66,6 +69,7 @@ class QWMO:
             'full_dynamic',
             'full_adaptive',
             'full_gapr',
+            'full_gapr_eps010',
         )
         if 'adaptive' in ablation_config or 'gapr' in ablation_config:
             self.pauli_epsilon_mode = 'adaptive'
@@ -81,6 +85,7 @@ class QWMO:
             'full_dynamic',
             'full_adaptive',
             'full_gapr',
+            'full_gapr_eps010',
         )
 
         self.rng = np.random.default_rng(seed)

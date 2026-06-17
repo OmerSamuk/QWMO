@@ -21,12 +21,14 @@ import matplotlib.pyplot as plt
 EPSILON_STYLES = {
     'QWMO_OrbitalPauli_GAPR': ('C0', '-'),
     'QWMO_Full_GAPR': ('C1', '-'),
+    'QWMO_Full_GAPR_eps010': ('C4', '-'),
     'QWMO_Full_Static': ('C2', '--'),
     'QWMO_Full_Dynamic': ('C3', '--'),
 }
 EPSILON_LABELS = {
     'QWMO_OrbitalPauli_GAPR': 'OrbitalPauli_GAPR',
     'QWMO_Full_GAPR': 'Full_GAPR',
+    'QWMO_Full_GAPR_eps010': 'Full_GAPR_eps010',
     'QWMO_Full_Static': 'Full_Static',
     'QWMO_Full_Dynamic': 'Full_Dynamic',
 }
@@ -38,6 +40,7 @@ PAULI_CFGS = [
     'QWMO_Full_Static',
     'QWMO_Full_Dynamic',
     'QWMO_Full_GAPR',
+    'QWMO_Full_GAPR_eps010',
 ]
 GAPR_PAULI_TRIPLE = [
     'QWMO_OrbitalPauli_Static',
@@ -190,7 +193,7 @@ def plot_pauli_evolution(data, func_id, output_dir):
 
 def plot_diversity_and_epsilon(data, func_id, output_dir):
     fkey = f'F{func_id}'
-    adaptive_cfgs = ['QWMO_OrbitalPauli_GAPR', 'QWMO_Full_GAPR']
+    adaptive_cfgs = ['QWMO_OrbitalPauli_GAPR', 'QWMO_Full_GAPR', 'QWMO_Full_GAPR_eps010']
 
     fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=False)
 
@@ -240,6 +243,7 @@ def plot_convergence(data, func_id, output_dir):
         'QWMO_Full_Static',
         'QWMO_Full_Dynamic',
         'QWMO_Full_GAPR',
+        'QWMO_Full_GAPR_eps010',
     ]
     fig, ax = plt.subplots(figsize=(10, 5))
     for cfg in cfgs:

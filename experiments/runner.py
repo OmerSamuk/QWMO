@@ -61,6 +61,7 @@ ALGO_TO_QWMO_CONFIG = {
     'QWMO_Full_Dynamic': 'full_dynamic',
     'QWMO_Full_Adaptive': 'full_adaptive',
     'QWMO_Full_GAPR': 'full_gapr',
+    'QWMO_Full_GAPR_eps010': 'full_gapr_eps010',
     'QWMO_OrbitalOnly': 'orbital_only',
     'QWMO_OrbitalPauli': 'orbital_pauli_dynamic',
     'QWMO_OrbitalPauli_Static': 'orbital_pauli_static',
@@ -105,7 +106,24 @@ class ExperimentRunner:
 
         self.results = {}
 
-    def run_qwmo(self, benchmark, ablation_config='full_dynamic', seed=None):
+    def run_qwmo(self, benchmark, ablation_config='full_dynamic', seed=None,
+                 qwmo_param_overrides=None):
+        qwmo_params = {
+            'gamma': 0.05,
+            'c_base': 5,
+            'kappa_0': 8,
+            'k_s': 10,
+            'eta_r': 0.001,
+            'epsilon_max_ratio': 0.1,
+            'epsilon_min_ratio': 0.01,
+            'static_epsilon_ratio': 0.05,
+            'adaptive_k': 3,
+            'adaptive_lambda0': 0.75,
+            'adaptive_epsilon_max_ratio': 0.15,
+        }
+        if qwmo_param_overrides:
+            qwmo_params.update(qwmo_param_overrides)
+
         optimizer = QWMO(
             func=benchmark,
             dimension=self.dimensions,
@@ -113,19 +131,9 @@ class ExperimentRunner:
             upper_bound=benchmark.upper_bound,
             population_size=self.population_size,
             max_fes=self.max_fes,
-            gamma=0.05,
-            c_base=5,
-            kappa_0=8,
-            k_s=10,
-            eta_r=0.001,
-            epsilon_max_ratio=0.1,
-            epsilon_min_ratio=0.01,
-            static_epsilon_ratio=0.05,
-            adaptive_k=3,
-            adaptive_lambda0=0.75,
-            adaptive_epsilon_max_ratio=0.15,
+            **qwmo_params,
             ablation_config=ablation_config,
-            seed=seed
+            seed=seed,
         )
 
         start_time = time.time()
@@ -313,11 +321,13 @@ class ExperimentRunner:
             'elapsed_time': elapsed
         }
 
-    def run_single_experiment(self, func_id, algorithm_name, seed):
+    def run_single_experiment(self, func_id, algorithm_name, seed,
+                               qwmo_param_overrides=None):
         benchmark = CEC2017Benchmark(func_id, self.dimensions)
 
         if algorithm_name in ALGO_TO_QWMO_CONFIG:
-            return self.run_qwmo(benchmark, ALGO_TO_QWMO_CONFIG[algorithm_name], seed)
+            return self.run_qwmo(benchmark, ALGO_TO_QWMO_CONFIG[algorithm_name], seed,
+                                 qwmo_param_overrides=qwmo_param_overrides)
         elif algorithm_name == 'ASO':
             return self.run_aso(benchmark, seed)
         elif algorithm_name == 'AOS':
