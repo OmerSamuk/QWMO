@@ -1,28 +1,32 @@
-"""GAPR pilot plot generation.
+"""GAPR comprehensive pilot plot generation.
+
+Produces figures under ``figures/{convergence,diversity,epsilon,pauli}/``
+within the pilot output directory.
 
 Usage:
-    python analysis/gapr_plots.py --input results/gapr_pilot/gapr_pilot_D30.json --output-dir results/gapr_pilot/figures
+    python analysis/gapr_plots.py \
+        --input results/gapr_comprehensive_pilot/pilot_results.json \
+        --output-dir results/gapr_comprehensive_pilot/figures
 """
 
 import os
 import json
 import argparse
 import numpy as np
-from scipy.stats import pearsonr
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
 EPSILON_STYLES = {
-    'QWMO_OrbitalPauli_Adaptive': ('C0', '-'),
-    'QWMO_Full_Adaptive': ('C1', '-'),
+    'QWMO_OrbitalPauli_GAPR': ('C0', '-'),
+    'QWMO_Full_GAPR': ('C1', '-'),
     'QWMO_Full_Static': ('C2', '--'),
     'QWMO_Full_Dynamic': ('C3', '--'),
 }
 EPSILON_LABELS = {
-    'QWMO_OrbitalPauli_Adaptive': 'OrbitalPauli_Adaptive',
-    'QWMO_Full_Adaptive': 'Full_Adaptive',
+    'QWMO_OrbitalPauli_GAPR': 'OrbitalPauli_GAPR',
+    'QWMO_Full_GAPR': 'Full_GAPR',
     'QWMO_Full_Static': 'Full_Static',
     'QWMO_Full_Dynamic': 'Full_Dynamic',
 }
@@ -30,11 +34,40 @@ EPSILON_LABELS = {
 PAULI_CFGS = [
     'QWMO_OrbitalPauli_Static',
     'QWMO_OrbitalPauli_Dynamic',
-    'QWMO_OrbitalPauli_Adaptive',
+    'QWMO_OrbitalPauli_GAPR',
     'QWMO_Full_Static',
     'QWMO_Full_Dynamic',
-    'QWMO_Full_Adaptive',
+    'QWMO_Full_GAPR',
 ]
+GAPR_PAULI_TRIPLE = [
+    'QWMO_OrbitalPauli_Static',
+    'QWMO_OrbitalPauli_Dynamic',
+    'QWMO_OrbitalPauli_GAPR',
+]
+GAPR_TRIPLE_LABELS = {
+    'QWMO_OrbitalPauli_Static': 'Static',
+    'QWMO_OrbitalPauli_Dynamic': 'Dynamic',
+    'QWMO_OrbitalPauli_GAPR': 'GAPR',
+}
+
+
+def _ensure_subdirs(base_dir, subdirs):
+    paths = {}
+    for k, name in subdirs.items():
+        p = os.path.join(base_dir, name)
+        os.makedirs(p, exist_ok=True)
+        paths[k] = p
+    return paths
+
+
+def _func_ids(data):
+    out = []
+    for key in data:
+        try:
+            out.append(int(key.replace('F', '')))
+        except (ValueError, AttributeError):
+            continue
+    return out
 
 
 def plot_epsilon_history(data, func_id, output_dir):
@@ -55,12 +88,13 @@ def plot_epsilon_history(data, func_id, output_dir):
         mean = np.mean(aligned, axis=0)
         std = np.std(aligned, axis=0)
         steps = np.arange(len(mean))
-        ax.plot(steps, mean, color=color, linestyle=style, label=EPSILON_LABELS[cfg], linewidth=1.5)
+        ax.plot(steps, mean, color=color, linestyle=style,
+                label=EPSILON_LABELS[cfg], linewidth=1.5)
         ax.fill_between(steps, mean - std, mean + std, color=color, alpha=0.15)
 
     ax.set_xlabel('Pauli step index')
     ax.set_ylabel('Epsilon')
-    ax.set_title(f'Epsilon History — F{func_id} (mean ± std, 10 seeds)')
+    ax.set_title(f'Epsilon History - F{func_id} (mean +/- std, 15 seeds)')
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
@@ -96,9 +130,10 @@ def plot_pauli_mechanism(data, func_id, output_dir):
     ax.bar(x, disp_vals, width, label='Displacements', color='C1', alpha=0.8)
     ax.bar(x + width, succ_vals, width, label='Successes', color='C2', alpha=0.8)
     ax.set_xticks(x)
-    ax.set_xticklabels([c.replace('QWMO_', '') for c in cfgs_present], rotation=30, ha='right')
+    ax.set_xticklabels([c.replace('QWMO_', '') for c in cfgs_present],
+                        rotation=30, ha='right')
     ax.set_ylabel('Total count')
-    ax.set_title(f'Pauli Mechanism — F{func_id} (10 seeds aggregated)')
+    ax.set_title(f'Pauli Mechanism - F{func_id} (15 seeds aggregated)')
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
     fig.tight_layout()
@@ -108,9 +143,54 @@ def plot_pauli_mechanism(data, func_id, output_dir):
     print(f"  Saved {path}")
 
 
+def plot_pauli_evolution(data, func_id, output_dir):
+    """Static vs Dynamic vs GAPR side-by-side: collisions, displacements, SER."""
+    fkey = f'F{func_id}'
+    coll_vals = []
+    disp_vals = []
+    ser_vals = []
+    present = []
+
+    for cfg in GAPR_PAULI_TRIPLE:
+        if cfg not in data.get(fkey, {}):
+            continue
+        coll = sum(sum(run) for run in data[fkey][cfg].get('pauli_collision_history_list', []))
+        disp = sum(sum(run) for run in data[fkey][cfg].get('pauli_displacement_history_list', []))
+        succ = sum(sum(run) for run in data[fkey][cfg].get('pauli_success_history_list', []))
+        SER = succ / max(disp, 1)
+        coll_vals.append(coll)
+        disp_vals.append(disp)
+        ser_vals.append(SER)
+        present.append(cfg)
+
+    if not present:
+        return
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    titles = ['Collisions', 'Displacements', 'SER']
+    values_list = [coll_vals, disp_vals, ser_vals]
+    colors = ['C0', 'C1', 'C2']
+
+    for ax, vals, title, color in zip(axes, values_list, titles, colors):
+        x = np.arange(len(present))
+        ax.bar(x, vals, color=color, alpha=0.8)
+        ax.set_xticks(x)
+        ax.set_xticklabels([GAPR_TRIPLE_LABELS[c] for c in present])
+        ax.set_ylabel(title)
+        ax.set_title(f'{title} - F{func_id}')
+        ax.grid(True, alpha=0.3, axis='y')
+
+    fig.suptitle(f'Pauli Evolution - F{func_id} (15 seeds aggregated)')
+    fig.tight_layout()
+    path = os.path.join(output_dir, f'pauli_evolution_F{func_id}.png')
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"  Saved {path}")
+
+
 def plot_diversity_and_epsilon(data, func_id, output_dir):
     fkey = f'F{func_id}'
-    adaptive_cfgs = ['QWMO_OrbitalPauli_Adaptive', 'QWMO_Full_Adaptive']
+    adaptive_cfgs = ['QWMO_OrbitalPauli_GAPR', 'QWMO_Full_GAPR']
 
     fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=False)
 
@@ -137,7 +217,7 @@ def plot_diversity_and_epsilon(data, func_id, output_dir):
             ax.fill_between(steps, mean - std, mean + std, alpha=0.15)
 
         ax.set_ylabel(ylabel)
-        ax.set_title(f'{title} — F{func_id}')
+        ax.set_title(f'{title} - F{func_id}')
         ax.legend()
         ax.grid(True, alpha=0.3)
 
@@ -149,83 +229,77 @@ def plot_diversity_and_epsilon(data, func_id, output_dir):
     print(f"  Saved {path}")
 
 
-def plot_epsilon_diversity_correlation(data, func_id, output_dir):
+def plot_convergence(data, func_id, output_dir):
     fkey = f'F{func_id}'
-    adaptive_cfgs = ['QWMO_OrbitalPauli_Adaptive', 'QWMO_Full_Adaptive']
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    for ax_idx, cfg in enumerate(adaptive_cfgs):
-        ax = axes[ax_idx]
+    cfgs = [
+        'QWMO_OrbitalOnly',
+        'QWMO_OrbitalPauli_Static',
+        'QWMO_OrbitalPauli_Dynamic',
+        'QWMO_OrbitalPauli_GAPR',
+        'QWMO_OrbitalEscape',
+        'QWMO_Full_Static',
+        'QWMO_Full_Dynamic',
+        'QWMO_Full_GAPR',
+    ]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for cfg in cfgs:
         if cfg not in data.get(fkey, {}):
-            ax.set_title(f'{cfg.replace("QWMO_", "")} — no data')
             continue
-
-        div_list_list = data[fkey][cfg].get('diversity_history_list', [])
-        ep_list_list = data[fkey][cfg].get('epsilon_history_list', [])
-        if not div_list_list or not ep_list_list:
-            ax.set_title(f'{cfg.replace("QWMO_", "")} — no data')
+        conv_list = data[fkey][cfg].get('convergence_list', [])
+        if not conv_list:
             continue
-
-        all_r = []
-        for div_hist, ep_hist in zip(div_list_list, ep_list_list):
-            if len(div_hist) < 2 or len(ep_hist) < 2:
-                continue
-            sample_indices = [i * 500 for i in range(1, len(div_hist))]
-            sample_indices = [i for i in sample_indices if i <= len(ep_hist)]
-            if len(sample_indices) < 2:
-                continue
-            eps_samples = [ep_hist[i - 1] for i in sample_indices]
-            div_samples = [div_hist[i // 500] for i in sample_indices]
-            r, p = pearsonr(div_samples, eps_samples)
-            all_r.append(r)
-            ax.scatter(div_samples, eps_samples, alpha=0.5, s=10)
-
-        if all_r:
-            mean_r = np.mean(all_r)
-            ax.set_title(f'{cfg.replace("QWMO_", "")}\nPearson r = {mean_r:.3f}')
-        else:
-            ax.set_title(f'{cfg.replace("QWMO_", "")} — no correlation data')
-
-        ax.set_xlabel('Diversity')
-        ax.set_ylabel('Epsilon')
-        ax.grid(True, alpha=0.3)
-
+        lens = [len(c) for c in conv_list if c]
+        if not lens:
+            continue
+        min_len = min(lens)
+        aligned = np.array([c[:min_len] for c in conv_list if len(c) >= min_len])
+        mean = np.mean(aligned, axis=0)
+        std = np.std(aligned, axis=0)
+        steps = np.arange(len(mean))
+        ax.plot(steps, mean, label=cfg.replace('QWMO_', ''), linewidth=1.5)
+        ax.fill_between(steps, mean - std, mean + std, alpha=0.15)
+    ax.set_xlabel('Iteration')
+    ax.set_ylabel('Best Fitness')
+    ax.set_yscale('log')
+    ax.set_title(f'Convergence - F{func_id} (mean +/- std, 15 seeds)')
+    ax.legend(loc='best', fontsize=8)
+    ax.grid(True, alpha=0.3)
     fig.tight_layout()
-    path = os.path.join(output_dir, f'epsilon_diversity_correlation_F{func_id}.png')
+    path = os.path.join(output_dir, f'convergence_F{func_id}.png')
     fig.savefig(path, dpi=150)
     plt.close(fig)
     print(f"  Saved {path}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='GAPR plot generation')
-    parser.add_argument('--input', type=str, default='results/gapr_pilot/gapr_pilot_D30.json',
+    parser = argparse.ArgumentParser(description='GAPR comprehensive pilot plots')
+    parser.add_argument('--input', type=str,
+                        default='results/gapr_comprehensive_pilot/pilot_results.json',
                         help='Input JSON path')
-    parser.add_argument('--output-dir', type=str, default='results/gapr_pilot/figures',
+    parser.add_argument('--output-dir', type=str,
+                        default='results/gapr_comprehensive_pilot/figures',
                         help='Output directory for figures')
     args = parser.parse_args()
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    subdirs = _ensure_subdirs(args.output_dir, {
+        'convergence': 'convergence',
+        'diversity': 'diversity',
+        'epsilon': 'epsilon',
+        'pauli': 'pauli',
+    })
 
     with open(args.input, 'r') as f:
         data = json.load(f)
 
-    func_ids = []
-    for key in data:
-        try:
-            fid = int(key.replace('F', ''))
-            func_ids.append(fid)
-        except (ValueError, AttributeError):
-            continue
-
+    func_ids = _func_ids(data)
     print(f"Generating plots for functions: {func_ids}")
 
     for fid in func_ids:
-        plot_epsilon_history(data, fid, args.output_dir)
-        plot_pauli_mechanism(data, fid, args.output_dir)
-        plot_diversity_and_epsilon(data, fid, args.output_dir)
-        plot_epsilon_diversity_correlation(data, fid, args.output_dir)
+        plot_convergence(data, fid, subdirs['convergence'])
+        plot_diversity_and_epsilon(data, fid, subdirs['diversity'])
+        plot_epsilon_history(data, fid, subdirs['epsilon'])
+        plot_pauli_mechanism(data, fid, subdirs['pauli'])
+        plot_pauli_evolution(data, fid, subdirs['pauli'])
 
     print("All plots generated.")
 
