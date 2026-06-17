@@ -21,11 +21,13 @@ ALGO_TO_QWMO_CONFIG = {
     'QWMO_Full_Static': 'full_static',
     'QWMO_Full_Dynamic': 'full_dynamic',
     'QWMO_Full_Adaptive': 'full_adaptive',
+    'QWMO_Full_GAPR': 'full_gapr',
     'QWMO_OrbitalOnly': 'orbital_only',
     'QWMO_OrbitalPauli': 'orbital_pauli_dynamic',
     'QWMO_OrbitalPauli_Static': 'orbital_pauli_static',
     'QWMO_OrbitalPauli_Dynamic': 'orbital_pauli_dynamic',
     'QWMO_OrbitalPauli_Adaptive': 'orbital_pauli_adaptive',
+    'QWMO_OrbitalPauli_GAPR': 'orbital_pauli_gapr',
     'QWMO_OrbitalEscape': 'orbital_escape',
 }
 

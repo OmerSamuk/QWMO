@@ -15,10 +15,12 @@ class QWMO:
         'orbital_pauli_static',
         'orbital_pauli_dynamic',
         'orbital_pauli_adaptive',
+        'orbital_pauli_gapr',
         'orbital_escape',
         'full_static',
         'full_dynamic',
         'full_adaptive',
+        'full_gapr',
     }
 
     def __init__(self, func, dimension, lower_bound, upper_bound,
@@ -59,11 +61,13 @@ class QWMO:
             'orbital_pauli_static',
             'orbital_pauli_dynamic',
             'orbital_pauli_adaptive',
+            'orbital_pauli_gapr',
             'full_static',
             'full_dynamic',
             'full_adaptive',
+            'full_gapr',
         )
-        if 'adaptive' in ablation_config:
+        if 'adaptive' in ablation_config or 'gapr' in ablation_config:
             self.pauli_epsilon_mode = 'adaptive'
         elif 'static' in ablation_config:
             self.pauli_epsilon_mode = 'static'
@@ -76,6 +80,7 @@ class QWMO:
             'full_static',
             'full_dynamic',
             'full_adaptive',
+            'full_gapr',
         )
 
         self.rng = np.random.default_rng(seed)

@@ -32,15 +32,19 @@ ABLATION_CONFIGS = [
     'QWMO_OrbitalPauli_Static',
     'QWMO_OrbitalPauli_Dynamic',
     'QWMO_OrbitalPauli_Adaptive',
+    'QWMO_OrbitalPauli_GAPR',
     'QWMO_OrbitalEscape',
     'QWMO_Full_Static',
     'QWMO_Full_Dynamic',
     'QWMO_Full_Adaptive',
+    'QWMO_Full_GAPR',
 ]
 
 DEPRECATED_ALIASES = {
     'QWMO_Full': 'QWMO_Full_Dynamic',
     'QWMO_OrbitalPauli': 'QWMO_OrbitalPauli_Dynamic',
+    'QWMO_OrbitalPauli_Adaptive': 'QWMO_OrbitalPauli_GAPR',
+    'QWMO_Full_Adaptive': 'QWMO_Full_GAPR',
 }
 
 BASELINE_ALGORITHMS = [
@@ -102,4 +106,35 @@ GAPR_PILOT_CONFIG = {
     "output_dir": "results/gapr_pilot",
     "json_name": "gapr_pilot_D30.json",
     "report_name": "gapr_pilot_validation_report.md",
+}
+
+GAPR_COMPREHENSIVE_PILOT_CONFIG = {
+    "functions": [5, 10, 15, 20, 23],
+    "dimension": 30,
+    "population_size": 50,
+    "max_fes": 300_000,
+    "seeds": list(range(1, 16)),
+    "search_range": 200,
+    "ablation_configs": [
+        "QWMO_OrbitalOnly",
+        "QWMO_OrbitalPauli_Static",
+        "QWMO_OrbitalPauli_Dynamic",
+        "QWMO_OrbitalPauli_GAPR",
+        "QWMO_OrbitalEscape",
+        "QWMO_Full_Static",
+        "QWMO_Full_Dynamic",
+        "QWMO_Full_GAPR",
+    ],
+    "output_dir": "results/gapr_comprehensive_pilot",
+    "json_name": "pilot_results.json",
+    "report_name": "pilot_report.md",
+    "validation_report_name": "validation_report.md",
+    "decision_name": "pilot_decision.md",
+    "summary_csv_name": "pilot_summary.csv",
+    "figures_subdirs": {
+        "convergence": "convergence",
+        "diversity": "diversity",
+        "epsilon": "epsilon",
+        "pauli": "pauli",
+    },
 }
