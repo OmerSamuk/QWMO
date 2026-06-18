@@ -53,14 +53,17 @@ def compute_stats(results_path, out_dir="results/phase1"):
             })
 
         for ctrl, comp in COMPARISONS:
-            ctrl_fits = func_df[func_df["variant_id"] == ctrl]["best_fitness"].dropna().values
-            comp_fits = func_df[func_df["variant_id"] == comp]["best_fitness"].dropna().values
-            min_len = min(len(ctrl_fits), len(comp_fits))
-            if min_len < 5:
+            ctrl_df = func_df[func_df["variant_id"] == ctrl][["seed", "best_fitness"]].dropna()
+            comp_df = func_df[func_df["variant_id"] == comp][["seed", "best_fitness"]].dropna()
+            merged = pd.merge(
+                ctrl_df, comp_df,
+                on="seed",
+                suffixes=("_ctrl", "_comp")
+            )
+            if len(merged) < 5:
                 continue
-
-            ctrl_fits = ctrl_fits[:min_len]
-            comp_fits = comp_fits[:min_len]
+            ctrl_fits = merged["best_fitness_ctrl"].values
+            comp_fits = merged["best_fitness_comp"].values
 
             try:
                 w_stat, w_p = wilcoxon(ctrl_fits, comp_fits)
@@ -90,8 +93,8 @@ def compute_stats(results_path, out_dir="results/phase1"):
                 "control_mean": float(np.mean(ctrl_fits)),
                 "competitor_mean": float(np.mean(comp_fits)),
                 "median_improvement_pct": float(
-                    (np.mean(ctrl_fits) - np.mean(comp_fits)) / abs(np.mean(comp_fits)) * 100
-                ) if abs(np.mean(comp_fits)) > 1e-12 else 0.0,
+                    (np.median(ctrl_fits) - np.median(comp_fits)) / abs(np.median(comp_fits)) * 100
+                ) if abs(np.median(comp_fits)) > 1e-12 else 0.0,
                 "Cliffs_delta": cd["Cliffs_delta"],
                 "effect_size": cd["interpretation"],
             })

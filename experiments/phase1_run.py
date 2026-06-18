@@ -179,6 +179,32 @@ def run_phase1(out_dir="results/phase1", max_workers=None):
     agg.to_csv(agg_path, index=False)
     print(f"Aggregate summary saved to {agg_path}")
 
+    all_iter_files = sorted(
+        os.path.join(iter_dir, f) for f in os.listdir(iter_dir)
+        if f.endswith("_iter.csv")
+    )
+    if all_iter_files:
+        combined_iter = pd.concat(
+            (pd.read_csv(fp) for fp in all_iter_files), ignore_index=True
+        )
+        combined_iter.to_csv(
+            os.path.join(out_dir, "phase1_iteration_metrics.csv"), index=False
+        )
+        print(f"Combined iteration metrics: {len(combined_iter)} rows")
+
+    all_event_files = sorted(
+        os.path.join(event_dir, f) for f in os.listdir(event_dir)
+        if f.endswith("_events.csv")
+    )
+    if all_event_files:
+        combined_events = pd.concat(
+            (pd.read_csv(fp) for fp in all_event_files), ignore_index=True
+        )
+        combined_events.to_csv(
+            os.path.join(out_dir, "phase1_event_logs.csv"), index=False
+        )
+        print(f"Combined event logs: {len(combined_events)} rows")
+
     print(f"\n{'='*60}")
     print("Phase-1 Summary")
     print(f"{'='*60}")

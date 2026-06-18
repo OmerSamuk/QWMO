@@ -29,7 +29,7 @@ def compute_mechanism_analysis(iter_dir="results/phase1/iteration_metrics",
         print("No iteration metrics found.")
         return
 
-    os.makedirs(os.path.join(out_dir, "phase1_mechanism_summary.csv"), exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     plot_dir = os.path.join(out_dir, "phase1_plots")
     for sub in ["epsilon", "collision", "escape", "diversity", "correlation"]:
         os.makedirs(os.path.join(plot_dir, sub), exist_ok=True)
@@ -78,17 +78,26 @@ def compute_mechanism_analysis(iter_dir="results/phase1/iteration_metrics",
                             label=variant, color=VARIANT_COLORS.get(variant), alpha=0.8)
 
             # Mechanism summary
+            search_range = 200
+            EPSILON_MAX_BY_VARIANT = {
+                "V0": None,
+                "V1": search_range * 0.05,
+                "V2": search_range * 0.10,
+                "V3": search_range * 0.15,
+            }
+            eps_max = EPSILON_MAX_BY_VARIANT.get(variant)
+            if eps_max is not None and eps_max > 0 and "epsilon_value" in vdf.columns:
+                epsilon_saturation = (vdf["epsilon_value"] >= 0.95 * eps_max).mean()
+            else:
+                epsilon_saturation = 0.0
+
             v_avg = vdf.mean(numeric_only=True)
             mechanism_rows.append({
                 "function": func_id,
                 "function_name": fname,
                 "variant": variant,
                 "mean_epsilon": v_avg.get("epsilon_value", 0),
-                "epsilon_saturation_ratio": (
-                    (vdf["epsilon_value"] >= vdf["epsilon_value"].max() - 1e-9).mean()
-                    if "epsilon_value" in vdf.columns and vdf["epsilon_value"].max() > 0
-                    else 0
-                ),
+                "epsilon_saturation_ratio": epsilon_saturation,
                 "mean_collision": v_avg.get("collision_count", 0),
                 "mean_displacement": v_avg.get("displacement_count", 0),
                 "total_escape_triggered": vdf["escape_triggered_count"].sum(),
