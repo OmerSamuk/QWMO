@@ -3,6 +3,7 @@ from core.agent import Agent
 from operators.orbital import adaptive_orbital_sampling
 from operators.pauli import pauli_exclusion
 from operators.escape import adaptive_quantum_escape
+from core.phase1_logger import Phase1Logger
 
 
 class BudgetExceeded(Exception):
@@ -21,6 +22,10 @@ ABLATION_CONFIGS = {
     'full_adaptive',
     'full_gapr',
     'full_gapr_eps010',
+    'phase1_v0',
+    'phase1_v1',
+    'phase1_v2',
+    'phase1_v3',
 }
 
 
@@ -34,7 +39,8 @@ class QWMO:
                  static_epsilon_ratio=0.05,
                  adaptive_k=3, adaptive_lambda0=0.75,
                  adaptive_epsilon_max_ratio=0.15,
-                 ablation_config='full_dynamic', seed=None):
+                 ablation_config='full_dynamic', seed=None,
+                 phase1_logger=None):
         if ablation_config not in ABLATION_CONFIGS:
             raise ValueError(
                 f"ablation_config must be one of {sorted(ABLATION_CONFIGS)}, "
@@ -59,6 +65,7 @@ class QWMO:
         self.adaptive_lambda0 = adaptive_lambda0
         self.adaptive_epsilon_max_ratio = adaptive_epsilon_max_ratio
         self.ablation_config = ablation_config
+        self.phase1_logger = phase1_logger
 
         self.use_pauli = ablation_config in (
             'orbital_pauli_static',
@@ -70,12 +77,15 @@ class QWMO:
             'full_adaptive',
             'full_gapr',
             'full_gapr_eps010',
+            'phase1_v1',
+            'phase1_v2',
+            'phase1_v3',
         )
-        if 'adaptive' in ablation_config or 'gapr' in ablation_config:
+        if 'adaptive' in ablation_config or 'gapr' in ablation_config or ablation_config == 'phase1_v3':
             self.pauli_epsilon_mode = 'adaptive'
-        elif 'static' in ablation_config:
+        elif 'static' in ablation_config or ablation_config == 'phase1_v1':
             self.pauli_epsilon_mode = 'static'
-        elif 'dynamic' in ablation_config:
+        elif 'dynamic' in ablation_config or ablation_config == 'phase1_v2':
             self.pauli_epsilon_mode = 'dynamic'
         else:
             self.pauli_epsilon_mode = None
@@ -86,6 +96,10 @@ class QWMO:
             'full_adaptive',
             'full_gapr',
             'full_gapr_eps010',
+            'phase1_v0',
+            'phase1_v1',
+            'phase1_v2',
+            'phase1_v3',
         )
 
         self.rng = np.random.default_rng(seed)
@@ -148,6 +162,8 @@ class QWMO:
             if self.fes_count >= self.max_fes:
                 break
 
+            pre_positions = np.array([agent.position for agent in self.agents])
+
             fitnesses = [agent.fitness for agent in self.agents]
             best_fitness = min(fitnesses)
             worst_fitness = max(fitnesses)
@@ -175,6 +191,13 @@ class QWMO:
                 if agent.fitness < self.best_agent.fitness:
                     self.best_agent = agent.copy()
 
+            pauli_events = []
+            escape_events = []
+            escape_attempts = 0
+            epsilon_value = None
+            collision_count = 0
+            displacement_count = 0
+
             if self.use_pauli:
                 try:
                     pauli_info = pauli_exclusion(
@@ -197,9 +220,14 @@ class QWMO:
                 except BudgetExceeded:
                     break
 
-                self.epsilon_history.append(pauli_info["epsilon"])
-                self.pauli_collision_history.append(pauli_info["collision_count"])
-                self.pauli_displacement_history.append(pauli_info["displacement_count"])
+                epsilon_value = pauli_info["epsilon"]
+                collision_count = pauli_info["collision_count"]
+                displacement_count = pauli_info["displacement_count"]
+                pauli_events = pauli_info.get("events", [])
+
+                self.epsilon_history.append(epsilon_value)
+                self.pauli_collision_history.append(collision_count)
+                self.pauli_displacement_history.append(displacement_count)
                 self.pauli_success_history.append(pauli_info["success_count"])
 
                 for agent in self.agents:
@@ -207,12 +235,11 @@ class QWMO:
                         self.best_agent = agent.copy()
 
             if self.use_escape:
-                escape_attempts = 0
                 escape_executed = 0
                 escape_successes = 0
                 delta_sum = 0.0
                 phase = self._escape_phase(t, T_max)
-                for agent in self.agents:
+                for idx, agent in enumerate(self.agents):
                     if agent.stagnation_count <= self.k_s:
                         continue
                     escape_attempts += 1
@@ -225,17 +252,18 @@ class QWMO:
                     if new_position is None:
                         continue
                     escape_executed += 1
+                    old_fitness_esc = agent.fitness
                     try:
                         new_fitness = self._evaluate(new_position)
                     except BudgetExceeded:
                         break
-                    old_fitness = agent.fitness
-                    delta = old_fitness - new_fitness
+                    delta = old_fitness_esc - new_fitness
                     agent.position = new_position
                     agent.fitness = new_fitness
                     agent.stagnation_count = 0
                     delta_sum += delta
-                    if new_fitness < old_fitness:
+                    escape_events.append((idx, old_fitness_esc))
+                    if new_fitness < old_fitness_esc:
                         escape_successes += 1
                         self.escape_phase_counts[phase] += 1
                     if agent.fitness < self.best_agent.fitness:
@@ -253,6 +281,19 @@ class QWMO:
 
             if t % self.diversity_interval == 0:
                 self._record_diversity()
+
+            if self.phase1_logger:
+                self.phase1_logger.record_iteration(
+                    t=t, agents=self.agents, best_agent=self.best_agent,
+                    epsilon_value=epsilon_value,
+                    collision_count=collision_count,
+                    displacement_count=displacement_count,
+                    escape_triggered_count=escape_attempts,
+                    pauli_events=pauli_events if pauli_events else None,
+                    escape_events=escape_events if escape_events else None,
+                    new_positions=new_positions,
+                    old_positions_for_clipping=pre_positions,
+                )
 
         if len(self.convergence_history) == 0 or self.convergence_history[-1] != self.best_agent.fitness:
             self.convergence_history.append(self.best_agent.fitness)

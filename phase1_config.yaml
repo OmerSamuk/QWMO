@@ -1,0 +1,83 @@
+# Phase-1 Experiment Configuration (Faz-1-final.md §5, §6)
+# This config is locked per charter §18.
+
+functions:
+  - id: 5
+    name: Schwefel
+    role: assistant
+  - id: 10
+    name: Rastrigin
+    role: secondary_decision
+  - id: 20
+    name: Hybrid
+    role: primary_decision
+  - id: 28
+    name: Composition
+    role: hard_reference
+
+dimension: 30
+population_size: 50
+max_fes: 300000
+seeds: 0..29
+num_runs: 30
+total_experiments: 480
+
+variants:
+  - id: phase1_v0
+    name: V0 (Orbital + Escape)
+    operators: [orbital, escape]
+    pauli: false
+    epsilon_mode: null
+  - id: phase1_v1
+    name: V1 (Static QWMO)
+    operators: [orbital, pauli, escape]
+    pauli: true
+    epsilon_mode: static
+    static_epsilon_ratio: 0.05
+  - id: phase1_v2
+    name: V2 (Dynamic Epsilon QWMO)
+    operators: [orbital, pauli, escape]
+    pauli: true
+    epsilon_mode: dynamic
+    epsilon_max_ratio: 0.10
+    epsilon_min_ratio: 0.005
+  - id: phase1_v3
+    name: V3 (GAPR Final)
+    operators: [orbital, pauli, escape]
+    pauli: true
+    epsilon_mode: adaptive
+    adaptive_k: 3
+    adaptive_lambda0: 0.75
+    adaptive_epsilon_max_ratio: 0.15
+
+logging:
+  window: 5
+  improvement_threshold: 1e-12
+  diversity_interval: 500
+
+statistical:
+  primary_test: wilcoxon_signed_rank
+  significance_threshold: 0.05
+  effect_size: cliffs_delta
+  comparisons:
+    - V3 vs V0
+    - V3 vs V1
+    - V3 vs V2
+    - V2 vs V1
+    - V1 vs V0
+
+output:
+  audit: phase1_audit_note.md
+  config: phase1_config.yaml
+  smoke_test_report: phase1_smoke_test_report.md
+  results_raw: phase1_results_raw.csv
+  iteration_metrics: phase1_iteration_metrics.csv
+  event_logs: phase1_event_logs.csv
+  summary_table: phase1_summary_table.csv
+  wilcoxon_results: phase1_wilcoxon_results.csv
+  effect_sizes: phase1_effect_sizes.csv
+  mechanism_summary: phase1_mechanism_summary.csv
+  decision_report: phase1_decision_report.md
+  plots_dir: phase1_plots/
+
+locked: true

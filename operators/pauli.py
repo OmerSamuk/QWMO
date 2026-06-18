@@ -132,6 +132,7 @@ def pauli_exclusion(agents, evaluate, rng,
     collision_count = len(pairs)
     displacement_count = 0
     success_count = 0
+    events = []
 
     for i, j in pairs:
         if agents[i].fitness > agents[j].fitness:
@@ -166,6 +167,7 @@ def pauli_exclusion(agents, evaluate, rng,
         agents[weaker_idx].stagnation_count = 0
 
         displacement_count += 1
+        events.append((weaker_idx, old_fitness, new_fitness))
         if new_fitness < old_fitness:
             success_count += 1
 
@@ -174,4 +176,5 @@ def pauli_exclusion(agents, evaluate, rng,
         "collision_count": collision_count,
         "displacement_count": displacement_count,
         "success_count": success_count,
+        "events": events,
     }

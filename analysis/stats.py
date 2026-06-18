@@ -4,6 +4,39 @@ from scipy.stats import friedmanchisquare, wilcoxon
 from statsmodels.stats.multitest import multipletests
 
 
+def cliffs_delta(x, y):
+    """Cliff's delta effect size for minimization.
+
+    Returns P(X < Y) - P(X > Y), which ranges in [-1, 1].
+    Negative values mean y (competitor/competitor) tends to be smaller (better)
+    than x (control/V3). For minimization, delta < 0 means the competitor is
+    better than the control. The returned key is 'Cliffs_delta' with
+    'interpretation'.
+    """
+    m, n = len(x), len(y)
+    if m == 0 or n == 0:
+        return {'Cliffs_delta': 0.0, 'interpretation': 'negligible'}
+    greater = 0
+    less = 0
+    for xi in x:
+        for yj in y:
+            if xi < yj:
+                less += 1
+            elif xi > yj:
+                greater += 1
+    delta = (less - greater) / (m * n)
+    ad = abs(delta)
+    if ad < 0.147:
+        interp = 'negligible'
+    elif ad < 0.33:
+        interp = 'small'
+    elif ad < 0.474:
+        interp = 'medium'
+    else:
+        interp = 'large'
+    return {'Cliffs_delta': delta, 'interpretation': interp}
+
+
 def vargha_delaney_a12(x, y):
     """Vargha-Delaney A12 effect size for minimization.
 

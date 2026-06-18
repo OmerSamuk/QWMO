@@ -39,6 +39,10 @@ ABLATION_CONFIGS = [
     'QWMO_Full_Adaptive',
     'QWMO_Full_GAPR',
     'QWMO_Full_GAPR_eps010',
+    'QWMO_Phase1_V0',
+    'QWMO_Phase1_V1',
+    'QWMO_Phase1_V2',
+    'QWMO_Phase1_V3',
 ]
 
 DEPRECATED_ALIASES = {
@@ -170,4 +174,26 @@ GAPR_REVISION_PILOT_CONFIG = {
         "epsilon": "epsilon",
         "pauli": "pauli",
     },
+}
+
+PHASE1_CONFIG = {
+    "functions": [5, 10, 20, 28],
+    "dimension": 30,
+    "population_size": 50,
+    "max_fes": 300_000,
+    "seeds": list(range(0, 30)),
+    "search_range": 200,
+    "ablation_configs": [
+        "phase1_v0",
+        "phase1_v1",
+        "phase1_v2",
+        "phase1_v3",
+    ],
+    "v2_override": {
+        "epsilon_min_ratio": 0.005,
+    },
+    "output_dir": "results/phase1",
+    "run_prefix": "PHASE1",
+    "smoke_seeds": list(range(0, 5)),
+    "smoke_max_fes": 30_000,
 }
