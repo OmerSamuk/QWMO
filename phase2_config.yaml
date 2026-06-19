@@ -4,8 +4,8 @@
 
 dataset:
   presmoke: D1
-  pilot: [D1, D3]
-  final: [D1, D2, D3]
+  pilot: [D1, D2]           # D2=HNSCC (ACRIN-HNSCC-FDG-PET-CT)
+  final: [D1, D2, D3]       # D3 eklenecek (TCIA'da araniyor)
 
 subspace_regimes:
   - ranked

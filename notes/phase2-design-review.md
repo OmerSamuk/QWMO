@@ -13,10 +13,10 @@
 | #  | Dataset | Modalite | Binary Task | n | Seçim |
 |----|---------|----------|-------------|---|-------|
 | D1 | NSCLC Radiogenomics (TCIA) | CT (toraks) | 2-yıl survival / EGFR mut | ~211 | ✅ **pilot + final** |
-| D2 | HNSCC (TCIA, Grossmann 2017) | CT (boyun) | HPV status / lokal kontrol | ~215 | ⏳ **yalnız final** |
-| D3 | LGG 1p/19q (TCIA) | Multi-modal MRI | 1p/19q codeletion | ~159 | ✅ **pilot + final** |
+| D2 | HNSCC (TCIA, ACRIN-HNSCC-FDG-PET-CT) | CT (baş-boyun) | HPV status / lokal kontrol | ~215 | ✅ **pilot + final** |
+| D3 | LGG 1p/19q (TCIA) | Multi-modal MRI | 1p/19q codeletion | ~159 | ⏳ **aranıyor** (TCIA'da bulunamadı) |
 
-**Karar:** Pilot = D1 + D3; Final = D1 + D2 + D3
+**Karar:** Pilot = D1 + D2; Final = D1 + D2 + D3 (D3 bulunursa)
 
 ### A.2 TCIA Erişim Doğrulaması
 
