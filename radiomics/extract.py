@@ -165,11 +165,27 @@ def extract_shape(mask: np.ndarray, spacing: Optional[List[float]] = None) -> Di
     }
 
 
+def _central_slice(mask: np.ndarray) -> int:
+    indices = np.where(mask > 0)
+    if len(indices[0]) == 0:
+        return 0
+    z_vals = indices[0]
+    return int(np.median(z_vals))
+
+
 def extract_all_features(image: np.ndarray, mask: np.ndarray) -> Dict[str, float]:
     features = {}
     features.update(extract_firstorder(image, mask))
-    features.update(extract_glcm(image, mask))
-    features.update(extract_glrlm(image, mask))
+    if image.ndim == 3:
+        z = _central_slice(mask)
+        slice_img = image[z]
+        slice_mask = mask[z]
+        if slice_mask.max() > 0:
+            features.update(extract_glcm(slice_img, slice_mask))
+            features.update(extract_glrlm(slice_img, slice_mask))
+    else:
+        features.update(extract_glcm(image, mask))
+        features.update(extract_glrlm(image, mask))
     features.update(extract_shape(mask))
     return features
 
