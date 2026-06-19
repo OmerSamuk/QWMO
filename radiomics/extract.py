@@ -60,8 +60,10 @@ def extract_glcm(pixels: np.ndarray, mask: np.ndarray,
     n_bins = 32
     if vmax <= vmin:
         return {}
-    bins = np.linspace(float(vmin), float(vmax + 1e-6), n_bins)
-    quantized = np.digitize(masked, bins) - 1
+    shifted = masked - float(vmin)
+    bins = np.linspace(0.0, float(vmax - vmin + 1e-6), n_bins)
+    quantized = np.digitize(shifted, bins) - 1
+    quantized = np.clip(quantized, 0, n_bins - 1)
 
     glcm = graycomatrix(
         quantized, distances=distances, angles=angles,
@@ -88,8 +90,10 @@ def extract_glrlm(pixels: np.ndarray, mask: np.ndarray) -> Dict[str, float]:
     if vmax <= vmin:
         return {}
     n_bins = 32
-    bins = np.linspace(float(vmin), float(vmax + 1e-6), n_bins)
-    quantized = np.digitize(masked, bins) - 1
+    shifted = masked - float(vmin)
+    bins = np.linspace(0.0, float(vmax - vmin + 1e-6), n_bins)
+    quantized = np.digitize(shifted, bins) - 1
+    quantized = np.clip(quantized, 0, n_bins - 1)
 
     features = {}
     for angle_idx, angle in enumerate([0, 1]):
