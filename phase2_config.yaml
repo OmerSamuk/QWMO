@@ -1,48 +1,80 @@
-# Phase-2 Radiomics Config — placeholder (phase2-plan.md §2)
-# Pre-smoke sonrasi Gün 0 Aşama C'de kilitlenecektir.
+# Phase-2 Radiomics Config — LOCKED (Gün 0 Aşama C onayı)
+# Pre-smoke timing 2026-06-19 → pilot matris asagi ölceklendi.
+# Charter §23.1 tavani korunur. Sadece asagi yönlü degisiklik.
 
-dataset: D1             # pre-smoke: D1; pilot: D1+[D2]; final: D1+D2+D3
+dataset:
+  presmoke: D1
+  pilot: [D1, D3]
+  final: [D1, D2, D3]
+
 subspace_regimes:
   - ranked
   - random
-p_levels:               # pre-smoke
-  - 100
-  - full
+
+p_levels:
+  presmoke: [100, full]
+  pilot: [100, 250, full]
+  final: [25, 50, 100, 250, 500, full]
 
 methods:
-  - M0_random
-  - M3_GA
-  - M4_BPSO
-  - V1_static_qwmo
+  presmoke: [M0_random, M3_GA, M4_BPSO, V1_static_qwmo]
+  pilot:
+    - M0_random
+    - M1_forward
+    - M2_backward
+    - M3_GA
+    - M4_BPSO
+    - V0_core_binary
+    - V1_static_qwmo
+  final:
+    - M0_random
+    - M1_forward
+    - M2_backward
+    - M3_GA
+    - M4_BPSO
+    - M5_ASO
+    - M6_AOS
+    - V0_core_binary
+    - V1_static_qwmo
 
-seeds: [0,1,2,3,4]      # pre-smoke: 5 seed; pilot: 10 seed; final: 30 seed
-fitness_budget: 1000     # pre-smoke/pilot; final: 3000
+seeds:
+  presmoke: [0,1,2,3,4]
+  pilot: [0,1,2,3,4,5,6,7,8,9]
+  final: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]
+
+fitness_budget:
+  presmoke: 1000
+  pilot: 1000
+  final: 3000
 
 outer_cv:
   folds: 5
-  repeats: 2
+  repeats: 1           # pilot; final 3 repeat
+
 inner_cv:
   folds: 3
 
 pilot:
   dataset_count: 2
   subspace_count: 2
-  p_count: 4
+  p_count: 3
   method_count: 7
   seed_count: 10
   fitness_budget: 1000
-  outer_cv_repeats: 2
-  v0_seed_count: 10
+  outer_cv_folds: 5
+  outer_cv_repeats: 1
+  total_runs: 4200
 
 final:
   dataset_count: 3
   subspace_count: 2
   p_count: 6
-  method_count: 7
+  method_count: 9
   seed_count: 30
   fitness_budget: 3000
   outer_cv_folds: 5
   outer_cv_repeats: 3
+  total_runs: 113400
 
 statistical:
   primary_test: wilcoxon_signed_rank
@@ -69,4 +101,6 @@ output:
   decision_report: phase2_decision_report.md
   plots_dir: phase2_plots/
 
-locked: false            # pre-smoke sonrasi true yapilacak
+locked: true
+locked_date: 2026-06-19
+locked_by: Gün 0 Aşama C onayi — pre-smoke timing + pilot scaling
