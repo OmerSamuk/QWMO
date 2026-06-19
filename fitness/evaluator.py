@@ -58,3 +58,29 @@ class FitnessEvaluator:
         mean_auc = float(np.mean(aucs))
         error = 1.0 - mean_auc
         return error + self.sparsity_lambda * selected_feature_ratio
+
+
+def evaluate_on_outer(X_train_sub, X_test_sub, y_train, y_test, mask):
+    """Leakage-free outer-test evaluation of a selected feature mask.
+
+    LR is fitted on *outer train* (no inner CV) and scored on *outer test*.
+    Both X_train_sub and X_test_sub are expected to be already preprocessed
+    (imputed + scaled by pipeline fitted on train only). No additional
+    scaling is applied since the pipeline scaler was fit on all train
+    features and simply selects columns.
+    """
+    selected = np.where(mask == 1)[0]
+    if len(selected) == 0:
+        return 0.5
+
+    X_tr = X_train_sub[:, selected]
+    X_te = X_test_sub[:, selected]
+
+    clf = LogisticRegression(solver='liblinear', max_iter=5000)
+    clf.fit(X_tr, y_train)
+
+    y_prob = clf.predict_proba(X_te)[:, 1]
+    try:
+        return float(roc_auc_score(y_test, y_prob))
+    except ValueError:
+        return 0.5
