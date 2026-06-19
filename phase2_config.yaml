@@ -1,0 +1,72 @@
+# Phase-2 Radiomics Config — placeholder (phase2-plan.md §2)
+# Pre-smoke sonrasi Gün 0 Aşama C'de kilitlenecektir.
+
+dataset: D1             # pre-smoke: D1; pilot: D1+[D2]; final: D1+D2+D3
+subspace_regimes:
+  - ranked
+  - random
+p_levels:               # pre-smoke
+  - 100
+  - full
+
+methods:
+  - M0_random
+  - M3_GA
+  - M4_BPSO
+  - V1_static_qwmo
+
+seeds: [0,1,2,3,4]      # pre-smoke: 5 seed; pilot: 10 seed; final: 30 seed
+fitness_budget: 1000     # pre-smoke/pilot; final: 3000
+
+outer_cv:
+  folds: 5
+  repeats: 2
+inner_cv:
+  folds: 3
+
+pilot:
+  dataset_count: 2
+  subspace_count: 2
+  p_count: 4
+  method_count: 7
+  seed_count: 10
+  fitness_budget: 1000
+  outer_cv_repeats: 2
+  v0_seed_count: 10
+
+final:
+  dataset_count: 3
+  subspace_count: 2
+  p_count: 6
+  method_count: 7
+  seed_count: 30
+  fitness_budget: 3000
+  outer_cv_folds: 5
+  outer_cv_repeats: 3
+
+statistical:
+  primary_test: wilcoxon_signed_rank
+  significance_threshold: 0.05
+  effect_size: cliffs_delta
+  holm_correction: true
+  comparison_vs: V1
+
+output:
+  presmoke_timing: phase2_presmoke_timing.csv
+  presmoke_report: phase2_presmoke_report.md
+  preprocessing_report: phase2_preprocessing_report.md
+  optimizer_audit: phase2_optimizer_audit.md
+  pilot_results_raw: phase2_pilot_results_raw.csv
+  pilot_decision_note: phase2_pilot_decision_note.md
+  results_raw: phase2_results_raw.csv
+  iteration_logs: phase2_iteration_logs.csv
+  event_logs: phase2_event_logs.csv
+  elite_masks: phase2_elite_masks.csv
+  pauli_response_metrics: phase2_pauli_response_metrics.csv
+  landscape_metrics: phase2_landscape_metrics.csv
+  statistical_tests: phase2_statistical_tests.csv
+  effect_sizes: phase2_effect_sizes.csv
+  decision_report: phase2_decision_report.md
+  plots_dir: phase2_plots/
+
+locked: false            # pre-smoke sonrasi true yapilacak

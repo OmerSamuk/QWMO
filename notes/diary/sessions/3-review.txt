@@ -1,0 +1,248 @@
+Genel olarak planı **%90 oranında onaylıyorum**. Dosyadaki yaklaşım, bizim tartışmalarımızla büyük ölçüde uyumlu. 
+
+Ancak merge edilmeden önce düzeltilmesini istediğim birkaç kritik nokta var.
+
+# Onayladığım Kısımlar
+
+### 1. İsimlendirme Köprüsü
+
+`QWMO_Full_GAPR` ve `QWMO_OrbitalPauli_GAPR`
+
+eklenmesi doğru karar.
+
+Bu ileride makalede:
+
+* Static
+* Dynamic
+* GAPR
+
+karşılaştırmasını çok temiz hale getirir.
+
+---
+
+### 2. Fonksiyon Seti
+
+```text
+F5
+F10
+F15
+F20
+F23
+```
+
+tam olarak istediğimiz pilot set.
+
+Bunu değiştirmezdim.
+
+---
+
+### 3. 15 Seed
+
+Doğru.
+
+10 seed biraz zayıf kalıyordu.
+
+30 seed ise pilot için gereksiz maliyet.
+
+---
+
+### 4. 8 Konfigürasyon
+
+Özellikle:
+
+```text
+OrbitalPauli_Static
+OrbitalPauli_Dynamic
+OrbitalPauli_GAPR
+```
+
+zincirinin korunması çok önemli.
+
+Makalenin ana hikâyesi burada yatıyor.
+
+---
+
+# Düzeltilmesini İstediğim Noktalar
+
+## 1. G2 Fazla Sert
+
+Şu an:
+
+```text
+collision_count > 0
+AND
+displacement_count > 0
+```
+
+tüm fonksiyonlarda PASS bekliyor.
+
+Bu gereksiz sert.
+
+Ben şöyle değiştirirdim:
+
+```text
+En az 4/5 fonksiyonda
+collision_count > 0
+ve
+displacement_count > 0
+```
+
+Sebep:
+
+Bir fonksiyonun topolojisi nedeniyle Pauli'nin tetiklenmemesi GAPR'ın başarısız olduğu anlamına gelmez.
+
+---
+
+## 2. G4 Tanımı Belirsiz
+
+Şu an:
+
+```text
+Full_GAPR
+min(Full_Static, Full_Dynamic)
+ile rekabetçi
+```
+
+deniyor.
+
+"Rekabetçi" matematiksel olarak tanımlanmalı.
+
+Önerim:
+
+```text
+Best fitness farkı
+%5 içinde ise
+rekabetçi say
+```
+
+veya
+
+```text
+Wilcoxon p > 0.05
+```
+
+ise eşdeğer say.
+
+Aksi halde rapor yorumlamaya açık olur.
+
+---
+
+## 3. G5 Fazla Katı
+
+Şu an:
+
+```text
+OrbitalPauli_GAPR
+>
+OrbitalPauli_Dynamic
+>
+OrbitalPauli_Static
+```
+
+bekleniyor.
+
+Bu her fonksiyonda gerçekleşmeyebilir.
+
+Ben şunu isterim:
+
+```text
+Ortalama olarak
+5 fonksiyonun en az 3'ünde
+```
+
+bu sıralama görülmeli.
+
+Yoksa tek bir fonksiyon tüm kriteri bozabilir.
+
+---
+
+## 4. Validation Raporuna Ek Alan
+
+Mutlaka eklenmeli:
+
+```text
+epsilon saturation ratio
+```
+
+Tanım:
+
+```text
+iterations at eps_max
+/
+total iterations
+```
+
+ve
+
+```text
+iterations at eps_min
+/
+total iterations
+```
+
+İlk pilotun ana problemi buydu.
+
+Bunu artık her raporda görmek istiyorum.
+
+---
+
+## 5. Eksik Kritik Grafik
+
+Şu an yok.
+
+Eklenmeli:
+
+### Pauli Evolution Plot
+
+Fonksiyon bazında:
+
+```text
+Static
+Dynamic
+GAPR
+```
+
+için:
+
+```text
+Collision Count
+Displacement Count
+SER
+```
+
+yan yana gösterilmeli.
+
+Makalede kullanma ihtimalimiz çok yüksek.
+
+---
+
+# En Kritik Ekleme
+
+Ben OpenCode'dan şunu özellikle isterdim:
+
+## pilot_summary.csv
+
+Sadece json yetmez.
+
+Şu tablo otomatik üretilsin:
+
+| Function | Config | Fitness | CER | DER | SER | Runtime |
+| -------- | ------ | ------- | --- | --- | --- | ------- |
+
+Bu daha sonra analiz işimizi çok hızlandırır.
+
+---
+
+# Nihai Kararım
+
+**Planı onaylıyorum.**
+
+Ancak merge öncesi şu 5 revizyonu isterim:
+
+1. G2 → 4/5 fonksiyon şartı
+2. G4 → rekabetçi tanımı netleştirilsin
+3. G5 → 3/5 fonksiyon bazlı değerlendirilsin
+4. epsilon saturation ratio eklensin
+5. pilot_summary.csv üretimi eklensin
+
+Bunlar eklendiğinde planı yaklaşık **9.5/10** seviyesinde görürüm ve OpenCode'un implementasyona geçmesini onaylarım.

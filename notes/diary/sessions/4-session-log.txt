@@ -1,0 +1,21 @@
+omersamuk36@qwmo-v2:~$ ls -la /root/QWMO/results/gapr_comprehensive_pilot/
+ls: cannot access '/root/QWMO/results/gapr_comprehensive_pilot/': Permission denied
+omersamuk36@qwmo-v2:~$ sudo -i
+root@qwmo-v2:~# ls -la /root/QWMO/results/gapr_comprehensive_pilot/
+total 367476
+drwxr-xr-x 2 root root      4096 Jun 17 16:13 .
+drwxr-xr-x 3 root root      4096 Jun 17 14:51 ..
+-rw-r--r-- 1 root root       728 Jun 17 16:13 pilot_decision.md
+-rw-r--r-- 1 root root     18537 Jun 17 16:13 pilot_report.md
+-rw-r--r-- 1 root root 376150666 Jun 17 16:13 pilot_results.json
+-rw-r--r-- 1 root root     52162 Jun 17 16:13 pilot_summary.csv
+-rw-r--r-- 1 root root     55456 Jun 17 16:13 validation_report.md
+root@qwmo-v2:~# tar czf /tmp/gapr_results.tar.gz -C /root/QWMO/results gapr_comprehensive_pilot/
+root@qwmo-v2:~# exit
+logout
+omersamuk36@qwmo-v2:~$ exit
+logout
+Connection to 34.38.64.199 closed.
+omersamuk36@cloudshell:~ (qwmo-framework)$ gcloud compute scp qwmo-v2:/tmp/gapr_results.tar.gz ./ --zone=europe-west1-c
+Enter passphrase for key '/home/omersamuk36/.ssh/google_compute_engine': 
+gapr_results.tar.gz
