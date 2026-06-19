@@ -42,7 +42,7 @@ def extract_firstorder(pixels: np.ndarray, mask: np.ndarray) -> Dict[str, float]
         "min": float(np.min(masked)),
         "max": float(np.max(masked)),
         "energy": float(np.sum(masked ** 2)),
-        "entropy": float(-np.sum(masked * np.log(masked + 1e-10))),
+        "entropy": float(-np.sum(masked * np.log(np.maximum(masked, 1e-10)))),
     }
 
 
@@ -160,11 +160,16 @@ def extract_shape(mask: np.ndarray, spacing: Optional[List[float]] = None) -> Di
     if not props:
         return {}
     r = props[0]
+    volume = float(r.area * np.prod(spacing or [1, 1, 1]))
+    if mask.ndim == 2:
+        perim = float(r.perimeter)
+    else:
+        perim = float(6 * (r.area ** (2 / 3)))
     return {
-        "volume": float(r.area * np.prod(spacing or [1, 1, 1])),
-        "surface_area": float(r.perimeter if mask.ndim == 2 else r.perimeter),
-        "sphericity": float((np.pi ** (1 / 3) * (6 * r.area) ** (2 / 3)) / r.perimeter) if r.perimeter > 0 else 0.0,
-        "compactness": float(r.area / (r.perimeter ** 2 + 1e-10)),
+        "volume": volume,
+        "surface_area": perim,
+        "sphericity": float((np.pi ** (1 / 3) * (6 * r.area) ** (2 / 3)) / perim) if perim > 0 else 0.0,
+        "compactness": float(r.area / (perim ** 2 + 1e-10)),
         "elongation": float(r.major_axis_length / (r.minor_axis_length + 1e-10)),
     }
 
