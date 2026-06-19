@@ -1,17 +1,23 @@
 import numpy as np
-import SimpleITK as sitk
-from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
+from skimage.feature import graycomatrix, graycoprops
 from skimage.measure import label, regionprops
-from scipy import ndimage
+from scipy import ndimage, stats
 from typing import Dict, Optional, List
 
 
+def _get_sitk():
+    import SimpleITK as sitk
+    return sitk
+
+
 def load_nifti(path: str) -> np.ndarray:
+    sitk = _get_sitk()
     img = sitk.ReadImage(path)
     return sitk.GetArrayFromImage(img)
 
 
 def load_dicom_series(path: str) -> np.ndarray:
+    sitk = _get_sitk()
     reader = sitk.ImageSeriesReader()
     dicom_names = reader.GetGDCMSeriesFileNames(path)
     reader.SetFileNames(dicom_names)
@@ -26,8 +32,8 @@ def extract_firstorder(pixels: np.ndarray, mask: np.ndarray) -> Dict[str, float]
     return {
         "mean": float(np.mean(masked)),
         "std": float(np.std(masked)),
-        "skewness": float(ndimage.skew(masked)),
-        "kurtosis": float(ndimage.kurtosis(masked)),
+        "skewness": float(stats.skew(masked)),
+        "kurtosis": float(stats.kurtosis(masked)),
         "p10": float(np.percentile(masked, 10)),
         "p25": float(np.percentile(masked, 25)),
         "p50": float(np.percentile(masked, 50)),
