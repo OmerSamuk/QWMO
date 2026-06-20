@@ -147,7 +147,6 @@ def _run_nested_cv(dataset_id, subspace_regime, p_level, method, seed,
         X, y = load_placeholder_features(dataset_id, seed=seed)
 
     sub_rng = np.random.default_rng(seed)
-    random_order = sub_rng.permutation(X.shape[1])
 
     skf_outer = StratifiedKFold(n_splits=outer_cv_folds, shuffle=True,
                                 random_state=seed)
@@ -161,17 +160,21 @@ def _run_nested_cv(dataset_id, subspace_regime, p_level, method, seed,
         X_train_pp, preprocessor = preprocess_train(X_train, y_train)
         X_test_pp = preprocess_transform(preprocessor, X_test)
 
+        n_pp = X_train_pp.shape[1]
+
         # Subspace order based on train only
         if subspace_regime == "ranked":
             F, _ = f_classif(X_train_pp, y_train)
             order = np.argsort(-F)
         else:
-            order = random_order
+            # random order relative to post-preprocessing feature count
+            fold_rng = np.random.default_rng(seed * 100 + outer_fold)
+            order = fold_rng.permutation(n_pp)
 
-        if isinstance(p_level, int) and p_level < X_train_pp.shape[1]:
+        if isinstance(p_level, int) and p_level < n_pp:
             selected = order[:p_level]
         else:
-            selected = order
+            selected = order[:n_pp]
 
         X_train_sub = X_train_pp[:, selected]
         X_test_sub = X_test_pp[:, selected]
