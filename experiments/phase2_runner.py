@@ -44,7 +44,7 @@ def decode_mask(position, method):
 def _get_matrix(mode, config=None):
     if mode == "presmoke":
         return {
-            "datasets": ["D1a"],
+            "datasets": ["D2"],
             "subspace_regimes": ["ranked", "random"],
             "p_levels": [100, "full"],
             "methods": ["M0_random", "M3_GA", "M4_BPSO", "V1_static_qwmo"],
@@ -56,7 +56,7 @@ def _get_matrix(mode, config=None):
         }
     elif mode == "smoke":
         return {
-            "datasets": ["D1a"],
+            "datasets": ["D2"],
             "subspace_regimes": ["ranked", "random"],
             "p_levels": [100, "full"],
             "methods": [
@@ -72,7 +72,7 @@ def _get_matrix(mode, config=None):
         }
     elif mode == "pilot":
         return {
-            "datasets": ["D1a", "D1b"],
+            "datasets": ["D2", "D3"],
             "subspace_regimes": ["ranked", "random"],
             "p_levels": [100, 250, "full"],
             "methods": [
@@ -87,7 +87,7 @@ def _get_matrix(mode, config=None):
         }
     elif mode == "final":
         return {
-            "datasets": ["D1a", "D1b", "D2", "D3"],
+            "datasets": ["D1", "D2", "D3"],
             "subspace_regimes": ["ranked", "random"],
             "p_levels": [25, 50, 100, 250, 500, "full"],
             "methods": [
