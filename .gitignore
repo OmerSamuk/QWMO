@@ -11,15 +11,10 @@ _*.sh
 _*.tar.gz
 .obsidian/
 .opencode/
-graphify-out/
-obsidian-vault/
 *.log
 .DS_Store
 Thumbs.db
 *.pdf
-checklist.md
-create_obsidian_vault.py
-qwmo-update-plan.txt
 AOS-MATLAB/
 ASO-MATLAB/
 QPSO-MATLAB/

@@ -20,6 +20,7 @@ Bu vault QWMO araştırma hattının tüm dokümantasyon, karar ve charter kayı
 - [[06-baselines|06 — Baseline Algorithms]]
 - [[notes/phase2-plan.md|Phase2 plan]]
 - [[notes/phase2-design-review.md|Phase2 design review]]
+- [[notes/phase2-preprocessing-audit.md|Phase2 preprocessing audit]]
 
 ## Pilots & Decisions
 
@@ -39,6 +40,7 @@ Bu vault QWMO araştırma hattının tüm dokümantasyon, karar ve charter kayı
 - [[diary/phase1-audit|phase1-audit — Phase-1 Audit Note]]
 - [[diary/sessions/3-review|3-review — Review Notes]]
 - [[diary/sessions/4-session-log|4-session-log — SSH Session Log]]
+- [[notes/diary/phase2_diary.md|Phase2 diary]]
 
 ## Manuscript
 

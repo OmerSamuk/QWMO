@@ -2,6 +2,8 @@
 
 QWMO is a quantum-inspired population-based optimization framework that combines three probabilistic operators to balance exploration and exploitation in multimodal optimization landscapes.
 
+> 📚 **Obsidian Vault:** This repository is also an Obsidian vault. Open it in Obsidian to browse `notes/` and `charters/` with backlinks. Start at `notes/00-index.md`.
+
 ## Features
 
 - **Adaptive Orbital Sampling:** Controls Gaussian search dispersion according to relative solution quality

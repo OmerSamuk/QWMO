@@ -81,7 +81,7 @@ def compute_stats(results_path, out_dir="results/phase1"):
                 "wilcoxon_stat": w_stat,
                 "wilcoxon_p": w_p,
                 "significant": bool(w_p < 0.05) if w_p is not None else False,
-                "n_runs": min_len,
+                "n_runs": int(len(merged)),
             })
 
             effect_rows.append({

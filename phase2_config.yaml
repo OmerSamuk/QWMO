@@ -4,8 +4,9 @@
 
 dataset:
   presmoke: D1
-  pilot: [D1, D2]           # D2=HNSCC (ACRIN-HNSCC-FDG-PET-CT)
-  final: [D1, D2, D3]       # D3 eklenecek (TCIA'da araniyor)
+  pilot: [D1a, D1b]         # NSCLC-Radiomics (33 GB, 422 hasta, CT+SEG)
+                            # D1a=EGFR mutation, D1b=2-year survival (farkli task)
+  final: [D1a, D1b, D2]     # D2 araniyor (HNSCC veya alternatif)
 
 subspace_regimes:
   - ranked
