@@ -125,6 +125,12 @@ def _get_optimizer(method, evaluator, n_features, budget, seed, **kwargs):
     elif method == "V1_static_qwmo":
         from core.qwmo_binary import QWMOBinary
         return QWMOBinary(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
+    elif method == "M5_ASO":
+        from baselines.aso_binary import ASOBinary
+        return ASOBinary(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
+    elif method == "M6_AOS":
+        from baselines.aos_binary import AOSBinary
+        return AOSBinary(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
     else:
         raise ValueError(f"Unknown method: {method}")
 
