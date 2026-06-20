@@ -3,7 +3,7 @@ import numpy as np
 from baselines.aso import ASO
 
 
-class ASOBinary:
+class ASO_M7:
     def __init__(self, evaluator, n_features, lower_bound=-5.0, upper_bound=5.0,
                  population_size=50, max_fes=1000,
                  alpha=50, beta=0.2, seed=None):

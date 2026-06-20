@@ -21,6 +21,7 @@ Bu vault QWMO araştırma hattının tüm dokümantasyon, karar ve charter kayı
 - [[notes/phase2-plan.md|Phase2 plan]]
 - [[notes/phase2-design-review.md|Phase2 design review]]
 - [[notes/phase2-preprocessing-audit.md|Phase2 preprocessing audit]]
+- [[notes/phase2-dataset-candidates.md|Phase2 dataset candidates]]
 
 ## Pilots & Decisions
 
@@ -33,6 +34,7 @@ Bu vault QWMO araştırma hattının tüm dokümantasyon, karar ve charter kayı
 - [[../charters/gapr-revision-pilot|GAPR Revision Pilot v2.0]]
 - [[../charters/dynamic-update-plan|Dynamic Update Plan]]
 - [[../charters/radiomics-landscape|Faz-2 Radiomics Landscape & Pauli Response Pilot]]
+- [[../charters/radiomics-landscape-amendment-1.md|Radiomics landscape amendment 1]]
 
 ## Research Diary
 

@@ -1,6 +1,7 @@
-# Phase-2 Radiomics Config — LOCKED (Gün 0 Aşama C onayı)
-# Pre-smoke timing 2026-06-19 → pilot matris asagi ölceklendi.
-# Charter §23.1 tavani korunur. Sadece asagi yönlü degisiklik.
+# Phase-2 Radiomics Config — AMENDED 2026-06-20
+# Amendment 1: D2=WORC-GIST, D3=WORC-Lipo (HNSCC/LGG yerine)
+# Amendment 1: M5/M6 → M7/M8 rename (charter §20 uyumu)
+# Charter §23.1 tavan: pilot=4200, final=145800 (9 method).
 
 dataset:
   presmoke: D2               # WORC-GIST (hazır CSV, pre-extracted 545 features)
@@ -32,8 +33,8 @@ methods:
     - M2_backward
     - M3_GA
     - M4_BPSO
-    - M5_ASO
-    - M6_AOS
+    - M7_ASO
+    - M8_AOS
     - V0_core_binary
     - V1_static_qwmo
 
@@ -101,6 +102,6 @@ output:
   decision_report: phase2_decision_report.md
   plots_dir: phase2_plots/
 
-locked: true
-locked_date: 2026-06-19
-locked_by: Gün 0 Aşama C onayi — pre-smoke timing + pilot scaling
+locked: false          # amendment-1 ile güncellendi; yeniden kilitlenmeyi bekliyor
+locked_date: 2026-06-20
+locked_by: Amendment 1 — WORC swap + M7/M8 rename (hata istemiyorum onayı)

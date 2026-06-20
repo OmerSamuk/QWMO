@@ -3,7 +3,7 @@ import numpy as np
 from baselines.aos import AOS
 
 
-class AOSBinary:
+class AOS_M8:
     def __init__(self, evaluator, n_features, lower_bound=-5.0, upper_bound=5.0,
                  population_size=50, max_fes=1000,
                  layer_number=5, foton_rate=0.1, seed=None):

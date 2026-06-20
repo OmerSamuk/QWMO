@@ -1,47 +1,47 @@
 # Phase-2 Design Review — Peer-Review Gate (Gün 0, Aşama A + C)
 
-> **Plan:** [[phase2-plan|Faz-2 Uygulama Planı v1.2]] §2 Gün 0
-> **Charter:** [[../charters/radiomics-landscape|Faz-2 Radiomics Landscape & Pauli Response Pilot v2.2]] (LOCKED)
-> **Durum:** ✅ COMPLETE — 2026-06-19
+> **Plan:** [[phase2-plan|Faz-2 Uygulama Planı v1.3]] §2 Gün 0
+> **Charter:** [[../charters/radiomics-landscape|Faz-2 Radiomics Landscape & Pauli Response Pilot v2.2]] (LOCKED) + [[../charters/radiomics-landscape-amendment-1|Amendment 1]]
+> **Durum:** ✅ GÜNCELLENDİ — 2026-06-20 (Amendment 1 ile senkron)
 
 ---
 
 ## A. Tasarım İncelemesi
 
-### A.1 Dataset Teklifi Onayı
+### A.1 Dataset Teklifi Onayı (Amendment 1 ile güncellendi)
 
 | #  | Dataset | Modalite | Binary Task | n | Seçim |
 |----|---------|----------|-------------|---|-------|
-| D1 | NSCLC Radiogenomics (TCIA) | CT (toraks) | 2-yıl survival / EGFR mut | ~211 | ✅ **pilot + final** |
-| D2 | HNSCC (TCIA, ACRIN-HNSCC-FDG-PET-CT) | CT (baş-boyun) | HPV status / lokal kontrol | ~215 | ✅ **pilot + final** |
-| D3 | LGG 1p/19q (TCIA) | Multi-modal MRI | 1p/19q codeletion | ~159 | ⏳ **aranıyor** (TCIA'da bulunamadı) |
+| D1 | NSCLC Radiogenomics (TCIA) | CT (toraks) | 2-yıl survival / EGFR mut | ~211 | ⏳ **final** (PyRadiomics extraction) |
+| D2 | WORC-GIST (GitHub, pre-CSV) | CT (abdomen) | GIST vs other | 246 | ✅ **presmoke + pilot + final** |
+| D3 | WORC-Lipo (GitHub, pre-CSV) | T1w MRI (extremite) | Lipoma vs liposarcoma | 115 | ✅ **pilot + final** |
 
-**Karar:** Pilot = D1 + D2; Final = D1 + D2 + D3 (D3 bulunursa)
+**Karar:** Pilot = D2 + D3; Final = D1 + D2 + D3 (D1 extraction yapılırsa)
 
-### A.2 TCIA Erişim Doğrulaması
+### A.2 Veri Erişim Doğrulaması (WORC swap)
 
-- **Collection URL:** D1 = NSCLC-Radiogenomics, D3 = LGG-1p19qDeletion
-- **Lisans:** CC BY 4.0 (her iki dataset)
-- **Mask formatı:** nii.gz
-- **İndirme yöntemi:** NBIA Data Retriever CLI (Gün 1)
-- **Erişim tarihi:** [Gün 1'de doldurulacak]
+- **D1 (NSCLC):** TCIA — NBIA Data Retriever CLI ile indirilecek (CC BY 4.0)
+- **D2 (WORC-GIST):** GitHub CSV — `https://github.com/DIAGNijmegen/worc-data/raw/main/...`
+- **D3 (WORC-Lipo):** GitHub CSV — aynı worc-data deposu
+- **WORC lisans:** Apache 2.0
+- **WORC etiketler:** XNAT Health-RI `https://xnat.health-ri.nl` — registration required
 
-### A.3 PyRadiomics 3.x Uyumluluk
+### A.3 Feature Extraction
 
-- **Input gereksinimi:** nii.gz + mask
-- **Feature class'lar:** firstorder, shape, glcm, glrlm, glszm, ngtdm, gldm
-- **Versiyon:** — (PyRadiomics build başarısız oldu, Gün 1'de conda-forge ile tekrar denenecek)
-- **Fallback:** SimpleITK + scikit-image manuel GLCM/GLRLM
+- **D1:** PyRadiomics 3.x (nii.gz + mask) — TCIA'dan indirme bekleniyor
+- **D2/D3:** Pre-extracted CSV (564 features) — WORC GitHub'dan hazır
+- **PyRadiomics versiyon:** — (build başarısız oldu, conda-forge ile tekrar denenecek)
+- **WORC feature format:** PREDICT/original prefix, single-lesion (multi-lesion yok)
 
 ---
 
 ## B. Pre-Smoke [K3] ✅ COMPLETE
 
-### B.1 Matris
+### B.1 Matris (Amendment 1 — D2)
 
 | Parametre | Değer |
 |-----------|-------|
-| Dataset | D1 (placeholder `np.random.rand`) |
+| Dataset | D2 (WORC-GIST, pre-extracted CSV) |
 | Subspace regimes | ranked, random |
 | p-levels | 100, full |
 | Methods | M0_random, M3_GA, M4_BPSO, V1_static_qwmo |
@@ -77,7 +77,7 @@ Detaylı rapor: `[[../results/phase2/phase2_presmoke_report.md]]`
 
 | Parametre | Pilot tavanı (Plan §4) | Pilot (ölçeklenmiş) |
 |-----------|----------------------|----------------------|
-| Dataset | 2 | **D1 + D3** |
+| Dataset | 2 | **D2 + D3** |
 | Subspace | 2 | ranked, random |
 | p-level | 4 | **100, 250, full** (50 çıktı) |
 | Method | 7 | M0, M1, M2, M3, M4, V0, V1 |
@@ -104,9 +104,9 @@ Detaylı rapor: `[[../results/phase2/phase2_presmoke_report.md]]`
 
 ## İmza
 
-- **Tarih:** 2026-06-19
-- **Onaylayan:** Pre-smoke sonuçları + peer review + kullanıcı onayı
-- **Dataset kararı:** D1 + D3 (pilot), D1 + D2 + D3 (final)
+- **Tarih:** 2026-06-20 (Amendment 1 ile güncellendi)
+- **Onaylayan:** Pre-smoke sonuçları + subagent audit + kullanıcı onayı
+- **Dataset kararı:** D2 + D3 (pilot), D1 + D2 + D3 (final)
 
 ## Related Notes
 

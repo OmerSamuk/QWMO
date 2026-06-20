@@ -1,8 +1,8 @@
-# Faz-2 Radiomics Çalışması — Uygulama Planı v1.2 (FINAL)
+# Faz-2 Radiomics Çalışması — Uygulama Planı v1.3 (WORC Amendment)
 
-> **Plan durumu:** ONAYLI — uygulama için hazır.
-> **Charter referansı:** [[../charters/radiomics-landscape|Faz-2 Radiomics Landscape & Pauli Response Pilot v2.2]] (LOCKED).
-> **Versiyon:** v1.2 — revision-notes.txt ve Kullanıcı onayı ile kilitlendi.
+> **Plan durumu:** GÜNCELLENDİ — amendment-1 ile senkron.
+> **Charter referansı:** [[../charters/radiomics-landscape|Faz-2 Radiomics Landscape & Pauli Response Pilot v2.2]] (LOCKED) + [[../charters/radiomics-landscape-amendment-1|Amendment 1]].
+> **Versiyon:** v1.3 — 2026-06-20 WORC dataset swap + M5/M6 → M7/M8 rename.
 
 ---
 
@@ -18,20 +18,20 @@
 |----|-------------------------------------------------------------------------|------------|
 | K1 | Peer-Review Gate Gün 0'da zorunlu                                       | rev D-3    |
 | K2 | TCIA/ROI erişim doğrulaması Gün 0 içinde                                | rev D-3    |
-| K3 | Pre-Smoke: 1 dataset = D1 (NSCLC), 4 method = M0+M3+M4+V1, 5 seed, 1000 FE | son onay   |
+| K3 | Pre-Smoke: 1 dataset = D2 (WORC-GIST), 4 method = M0+M3+M4+V1, 5 seed, 1000 FE | amendment-1 |
 | K4 | Charter §23.1 tavan matris korunur; pre-smoke sonrası **yalnız aşağı** ölçeklenir | son onay |
 | K5 | V0 pilotta zorunlu, 10 seed (full pilot seed protokolü ile aynı)        | son onay   |
 | K6 | V1 ana varyant; V0 = Pauli izolasyon kontrolü                           | rev D-2    |
-| K7 | Feature extraction: PyRadiomics (DICOM/nii.gz + mask)                  | orijinal   |
+| K7 | Feature extraction: PyRadiomics (D1); WORC pre-CSV (D2/D3)             | amendment-1 |
 | K8 | Compute: GCloud VM, yalnızca Peer-Review Gate Aşama C onayından sonra   | orijinal   |
 
-Dataset teklifi (Gün 0 Aşama A'da onaylanacak):
+Dataset teklifi (Amendment 1 ile güncellendi):
 
 | #  | Dataset                         | Modalite       | Binary task                | n     |
 |----|---------------------------------|----------------|----------------------------|-------|
 | D1 | NSCLC Radiogenomics (TCIA)      | CT (toraks)    | 2-yıl survival / EGFR mut  | ~211  |
-| D2 | HNSCC (TCIA, Grossmann 2017)    | CT (boyun)     | HPV status / lokal kontrol | ~215  |
-| D3 | LGG 1p/19q (TCIA)               | Multi-modal MRI| 1p/19q codeletion          | ~159  |
+| D2 | WORC-GIST (GitHub, pre-CSV)     | CT (abdomen)   | GIST vs other              | 246   |
+| D3 | WORC-Lipo (GitHub, pre-CSV)     | T1w MRI (extremite) | Lipoma vs liposarcoma | 115   |
 
 ---
 
@@ -77,10 +77,10 @@ Gün 20  Decision Report → phase2_decision_report.md (Karar A/B/C)
 
 ---
 
-## 3. Pre-Smoke Matris (K3 ile kilitli)
+## 3. Pre-Smoke Matris (Amendment 1 ile güncellendi)
 
 ```text
-datasets          : [D1]
+datasets          : [D2]                                            # WORC-GIST
 subspace_regimes  : [ranked, random]
 p_levels          : [100, full]
 methods           : [M0_random, M3_GA, M4_BPSO, V1_static_qwmo]   # V0 yok
@@ -105,7 +105,7 @@ Pilot tavanı:
 Final tavanı (pilot pozitifse):
 
 ```text
-3 dataset × 2 subspace × 6 p × 7 method × 30 seed × 5×3 fold × 3000 FE
+3 dataset × 2 subspace × 6 p × 9 method × 30 seed × 5×3 fold × 3000 FE   # M7/M8 eklendi
 ```
 
 V0 her zaman **10 seed** ile çalışır (pilot ölçekli) [K5].
@@ -155,6 +155,8 @@ baselines/
   ga_binary.py          # M3 Genetic Algorithm
   greedy.py             # M1 Forward, M2 Backward
   random_search.py      # M0
+  aso_binary.py         # M7 ASO Binary (latent → sigmoid → mask)
+  aos_binary.py         # M8 AOS Binary (latent → sigmoid → mask)
 
 experiments/
   phase2_runner.py      # matris orkestratörü (presmoke / smoke / pilot / final modları)
@@ -251,7 +253,7 @@ Karar C: ana kriterlerden ≤1  VEYA  Pauli yalnız maliyet/gürültü
 
 ---
 
-## 8. Yasaklar (charter §6 — teyit)
+## 8. Yasaklar (charter §6 + Amendment 1 — teyit)
 
 ```text
 • Yeni QWMO operatörü / yeni escape / orbital / epsilon formülü eklemek yok
@@ -260,7 +262,8 @@ Karar C: ana kriterlerden ≤1  VEYA  Pauli yalnız maliyet/gürültü
 • Leakage içeren pipeline yok
 • V1 kötü gelirse V0'ı ana algoritma ilan etmek yok
 • V1 iyi gelirse Faz-1 sonucunu yok saymak yok
-• charters/* ve cec2017-py/* dosyaları kilitli, dokunulmaz
+• charters/radiomics-landscape.md ve cec2017-py/* dosyaları kilitli, dokunulmaz
+• amendment-1 geçerlidir ve charter ile birlikte okunur
 ```
 
 ---
@@ -283,6 +286,7 @@ Hiçbir koşulda `charters/*` veya `cec2017-py/*` dokunulmayacak.
 ## 10. Cross-References
 
 - [[../charters/radiomics-landscape|Faz-2 Radiomics Landscape & Pauli Response Pilot v2.2]] (LOCKED)
+- [[../charters/radiomics-landscape-amendment-1|Amendment 1]] (2026-06-20)
 - [[04-phase1-decision|Phase-1 Decision = C]]
 - [[00-index|Vault Index]]
 - [[../revision-notes|revision-notes.txt]] (plan revizyon kaynağı)

@@ -22,8 +22,8 @@ METHOD_SHORT = {
     "M2_backward": "M2",
     "M3_GA": "M3",
     "M4_BPSO": "M4",
-    "M5_ASO": "M5",
-    "M6_AOS": "M6",
+    "M7_ASO": "M7",
+    "M8_AOS": "M8",
     "V0_core_binary": "V0",
     "V1_static_qwmo": "V1",
 }
@@ -61,7 +61,7 @@ def _get_matrix(mode, config=None):
             "p_levels": [100, "full"],
             "methods": [
                 "M0_random", "M1_forward", "M2_backward",
-                "M3_GA", "M4_BPSO", "M5_ASO", "M6_AOS",
+                "M3_GA", "M4_BPSO", "M7_ASO", "M8_AOS",
                 "V0_core_binary", "V1_static_qwmo",
             ],
             "seeds": [0, 1, 2],
@@ -92,7 +92,7 @@ def _get_matrix(mode, config=None):
             "p_levels": [25, 50, 100, 250, 500, "full"],
             "methods": [
                 "M0_random", "M1_forward", "M2_backward",
-                "M3_GA", "M4_BPSO", "M5_ASO", "M6_AOS",
+                "M3_GA", "M4_BPSO", "M7_ASO", "M8_AOS",
                 "V0_core_binary", "V1_static_qwmo",
             ],
             "seeds": list(range(30)),
@@ -125,12 +125,12 @@ def _get_optimizer(method, evaluator, n_features, budget, seed, **kwargs):
     elif method == "V1_static_qwmo":
         from core.qwmo_binary import QWMOBinary
         return QWMOBinary(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
-    elif method == "M5_ASO":
-        from baselines.aso_binary import ASOBinary
-        return ASOBinary(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
-    elif method == "M6_AOS":
-        from baselines.aos_binary import AOSBinary
-        return AOSBinary(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
+    elif method == "M7_ASO":
+        from baselines.aso_binary import ASO_M7
+        return ASO_M7(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
+    elif method == "M8_AOS":
+        from baselines.aos_binary import AOS_M8
+        return AOS_M8(evaluator, n_features, max_fes=budget, seed=seed, **kwargs)
     else:
         raise ValueError(f"Unknown method: {method}")
 
