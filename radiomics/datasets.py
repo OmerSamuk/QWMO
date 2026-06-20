@@ -145,7 +145,7 @@ def load_placeholder_features(dataset_id: str, n_features: int = 500,
     return X, y
 
 
-def load_worc_features(dataset_name: str, label_csv_path: str = None):
+def load_worc_features(dataset_name: str, label_csv_path: str = None, seed: int = 42):
     csv_path = WORC_FEATURE_PATHS[dataset_name]
     df = pd.read_csv(csv_path)
 
@@ -158,10 +158,10 @@ def load_worc_features(dataset_name: str, label_csv_path: str = None):
         label_map = dict(zip(labels_df["Patient"], labels_df["Diagnosis_binary"]))
         y = df[patient_col].map(label_map).values.astype(int)
     else:
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(seed)
         n = len(df)
         y = np.zeros(n, dtype=int)
-        y[:n//2] = 1
+        y[:n // 2] = 1
         rng.shuffle(y)
 
     return X, y, feature_cols

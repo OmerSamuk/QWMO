@@ -142,7 +142,7 @@ def _run_nested_cv(dataset_id, subspace_regime, p_level, method, seed,
     ds = get_dataset(dataset_id)
     if dataset_id in ("D2", "D3"):
         worc_name = {"D2": "GIST", "D3": "Lipo"}[dataset_id]
-        X, y, _ = load_worc_features(worc_name)
+        X, y, _ = load_worc_features(worc_name, seed=seed)
     else:
         X, y = load_placeholder_features(dataset_id, seed=seed)
 
