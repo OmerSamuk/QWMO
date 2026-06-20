@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score
 
 from fitness.preprocessing import preprocess_train, preprocess_transform
 from fitness.evaluator import FitnessEvaluator, evaluate_on_outer
-from radiomics.datasets import get_dataset, load_placeholder_features
+from radiomics.datasets import get_dataset, load_placeholder_features, load_worc_features
 
 
 MODES = {"presmoke", "smoke", "pilot", "final"}
@@ -140,7 +140,11 @@ def _run_nested_cv(dataset_id, subspace_regime, p_level, method, seed,
     """Single run with outer CV loop. Returns list of per-fold result dicts."""
 
     ds = get_dataset(dataset_id)
-    X, y = load_placeholder_features(dataset_id, seed=seed)
+    if dataset_id in ("D2", "D3"):
+        worc_name = {"D2": "GIST", "D3": "Lipo"}[dataset_id]
+        X, y, _ = load_worc_features(worc_name)
+    else:
+        X, y = load_placeholder_features(dataset_id, seed=seed)
 
     sub_rng = np.random.default_rng(seed)
     random_order = sub_rng.permutation(X.shape[1])
