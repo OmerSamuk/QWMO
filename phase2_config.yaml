@@ -3,10 +3,9 @@
 # Charter §23.1 tavani korunur. Sadece asagi yönlü degisiklik.
 
 dataset:
-  presmoke: D1
-  pilot: [D1a, D1b]         # NSCLC-Radiomics (33 GB, 422 hasta, CT+SEG)
-                            # D1a=EGFR mutation, D1b=2-year survival (farkli task)
-  final: [D1a, D1b, D2]     # D2 araniyor (HNSCC veya alternatif)
+  presmoke: D2               # WORC-GIST (hazır CSV, pre-extracted 545 features)
+  pilot: [D2, D3]            # WORC-GIST (n=246, CT) + WORC-Lipo (n=115, MRI)
+  final: [D1, D2, D3]        # D1=NSCLC-Radiogenomics (n=211, CT, raw DICOM)
 
 subspace_regimes:
   - ranked
@@ -64,7 +63,7 @@ pilot:
   fitness_budget: 1000
   outer_cv_folds: 5
   outer_cv_repeats: 1
-  total_runs: 4200
+  total_runs: 4200    # 2 datasets × 2 subspace × 3 p × 7 method × 10 seed × 5 fold
 
 final:
   dataset_count: 3
@@ -75,7 +74,7 @@ final:
   fitness_budget: 3000
   outer_cv_folds: 5
   outer_cv_repeats: 3
-  total_runs: 113400
+  total_runs: 145800  # 3 datasets × 2 subspace × 6 p × 9 method × 30 seed × 5×3 fold
 
 statistical:
   primary_test: wilcoxon_signed_rank
