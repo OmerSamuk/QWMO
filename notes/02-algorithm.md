@@ -1,5 +1,7 @@
 # QWMO: Quantum Wave-function Metaheuristic Optimizer
 
+> 📚 **Related Notes:** [[00-index|Vault Index]] · [[01-overview|Project Overview]] · [[05-architecture|Architecture]] · [[06-baselines|Baselines]] · [[03-pilots-overview|Pilots]]
+
 ## Overview
 
 QWMO (Quantum Wave-function Metaheuristic Optimizer) is a quantum-inspired population-based optimization framework that combines three probabilistic operators to balance exploration and exploitation in multimodal optimization landscapes.

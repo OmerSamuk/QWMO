@@ -1,0 +1,107 @@
+# Phase-2 Radiomics Config — AMENDED 2026-06-20
+# Amendment 1: D2=WORC-GIST, D3=WORC-Lipo (HNSCC/LGG yerine)
+# Amendment 1: M5/M6 → M7/M8 rename (charter §20 uyumu)
+# Charter §23.1 tavan: pilot=4200, final=145800 (9 method).
+
+dataset:
+  presmoke: D2               # WORC-GIST (hazır CSV, pre-extracted 545 features)
+  pilot: [D2, D3]            # WORC-GIST (n=246, CT) + WORC-Lipo (n=115, MRI)
+  final: [D1, D2, D3]        # D1=NSCLC-Radiogenomics (n=211, CT, raw DICOM)
+
+subspace_regimes:
+  - ranked
+  - random
+
+p_levels:
+  presmoke: [100, full]
+  pilot: [100, 250, full]
+  final: [25, 50, 100, 250, 500, full]
+
+methods:
+  presmoke: [M0_random, M3_GA, M4_BPSO, V1_static_qwmo]
+  pilot:
+    - M0_random
+    - M1_forward
+    - M2_backward
+    - M3_GA
+    - M4_BPSO
+    - V0_core_binary
+    - V1_static_qwmo
+  final:
+    - M0_random
+    - M1_forward
+    - M2_backward
+    - M3_GA
+    - M4_BPSO
+    - M7_ASO
+    - M8_AOS
+    - V0_core_binary
+    - V1_static_qwmo
+
+seeds:
+  presmoke: [0,1,2,3,4]
+  pilot: [0,1,2,3,4,5,6,7,8,9]
+  final: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]
+
+fitness_budget:
+  presmoke: 1000
+  pilot: 1000
+  final: 3000
+
+outer_cv:
+  folds: 5
+  repeats: 1           # pilot; final 3 repeat
+
+inner_cv:
+  folds: 3
+
+pilot:
+  dataset_count: 2
+  subspace_count: 2
+  p_count: 3
+  method_count: 7
+  seed_count: 10
+  fitness_budget: 1000
+  outer_cv_folds: 5
+  outer_cv_repeats: 1
+  total_runs: 4200    # 2 datasets × 2 subspace × 3 p × 7 method × 10 seed × 5 fold
+
+final:
+  dataset_count: 3
+  subspace_count: 2
+  p_count: 6
+  method_count: 9
+  seed_count: 30
+  fitness_budget: 3000
+  outer_cv_folds: 5
+  outer_cv_repeats: 3
+  total_runs: 145800  # 3 datasets × 2 subspace × 6 p × 9 method × 30 seed × 5×3 fold
+
+statistical:
+  primary_test: wilcoxon_signed_rank
+  significance_threshold: 0.05
+  effect_size: cliffs_delta
+  holm_correction: true
+  comparison_vs: V1
+
+output:
+  presmoke_timing: phase2_presmoke_timing.csv
+  presmoke_report: phase2_presmoke_report.md
+  preprocessing_report: phase2_preprocessing_report.md
+  optimizer_audit: phase2_optimizer_audit.md
+  pilot_results_raw: phase2_pilot_results_raw.csv
+  pilot_decision_note: phase2_pilot_decision_note.md
+  results_raw: phase2_results_raw.csv
+  iteration_logs: phase2_iteration_logs.csv
+  event_logs: phase2_event_logs.csv
+  elite_masks: phase2_elite_masks.csv
+  pauli_response_metrics: phase2_pauli_response_metrics.csv
+  landscape_metrics: phase2_landscape_metrics.csv
+  statistical_tests: phase2_statistical_tests.csv
+  effect_sizes: phase2_effect_sizes.csv
+  decision_report: phase2_decision_report.md
+  plots_dir: phase2_plots/
+
+locked: false          # amendment-1 ile güncellendi; yeniden kilitlenmeyi bekliyor
+locked_date: 2026-06-20
+locked_by: Amendment 1 — WORC swap + M7/M8 rename (hata istemiyorum onayı)

@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from benchmark.cec2017 import CEC2017Benchmark, get_cec2017_functions
@@ -7,12 +8,89 @@ from core.qwmo import QWMO
 from baselines.aso import ASO
 from baselines.aos import AOS
 from baselines.qpso import QPSO
-from mealpy.swarm_based.PSO import OriginalPSO
-from mealpy.evolutionary_based.GA import OriginalGA
-from mealpy.swarm_based.GWO import OriginalGWO
-from mealpy.swarm_based.HHO import OriginalHHO
-from mealpy.evolutionary_based.SHADE import OriginalSHADE
 import cma
+
+
+def _import_mealpy_algorithm(algorithm_name):
+    """Lazy loader for mealpy baseline algorithms.
+
+    Different mealpy versions expose algorithms at different paths (e.g.
+    ``mealpy.evolutionary_based.GA.OriginalGA`` was renamed/moved in
+    newer releases). This function attempts a sequence of known import
+    paths and returns the resolved class.
+    """
+    candidates = {
+        'PSO': [
+            ('mealpy.swarm_based.PSO', 'OriginalPSO'),
+            ('mealpy.swarm_based.PSO', 'PSO'),
+        ],
+        'GA': [
+            ('mealpy.evolutionary_based.GA', 'OriginalGA'),
+            ('mealpy.evolutionary_based.GA', 'GA'),
+        ],
+        'GWO': [
+            ('mealpy.swarm_based.GWO', 'OriginalGWO'),
+            ('mealpy.swarm_based.GWO', 'GWO'),
+        ],
+        'HHO': [
+            ('mealpy.swarm_based.HHO', 'OriginalHHO'),
+            ('mealpy.swarm_based.HHO', 'HHO'),
+        ],
+        'SHADE': [
+            ('mealpy.evolutionary_based.SHADE', 'OriginalSHADE'),
+            ('mealpy.evolutionary_based.SHADE', 'SHADE'),
+        ],
+    }
+    last_error = None
+    for module_name, class_name in candidates[algorithm_name]:
+        try:
+            module = __import__(module_name, fromlist=[class_name])
+            return getattr(module, class_name)
+        except (ImportError, AttributeError) as exc:
+            last_error = exc
+    raise ImportError(
+        f'Could not import {algorithm_name} from mealpy. Tried: '
+        + ', '.join(f'{m}.{c}' for m, c in candidates[algorithm_name])
+        + f'. Last error: {last_error}'
+    )
+
+
+ALGO_TO_QWMO_CONFIG = {
+    'QWMO_Full': 'full_dynamic',
+    'QWMO_Full_Static': 'full_static',
+    'QWMO_Full_Dynamic': 'full_dynamic',
+    'QWMO_Full_Adaptive': 'full_adaptive',
+    'QWMO_Full_GAPR': 'full_gapr',
+    'QWMO_Full_GAPR_eps010': 'full_gapr_eps010',
+    'QWMO_Phase1_V0': 'phase1_v0',
+    'QWMO_Phase1_V1': 'phase1_v1',
+    'QWMO_Phase1_V2': 'phase1_v2',
+    'QWMO_Phase1_V3': 'phase1_v3',
+    'QWMO_OrbitalOnly': 'orbital_only',
+    'QWMO_OrbitalPauli': 'orbital_pauli_dynamic',
+    'QWMO_OrbitalPauli_Static': 'orbital_pauli_static',
+    'QWMO_OrbitalPauli_Dynamic': 'orbital_pauli_dynamic',
+    'QWMO_OrbitalPauli_Adaptive': 'orbital_pauli_adaptive',
+    'QWMO_OrbitalPauli_GAPR': 'orbital_pauli_gapr',
+    'QWMO_OrbitalEscape': 'orbital_escape',
+}
+
+
+QWMO_MECHANISM_KEYS = [
+    'convergence',
+    'pauli_collision_history',
+    'pauli_displacement_history',
+    'pauli_success_history',
+    'epsilon_history',
+    'escape_attempt_history',
+    'escape_executed_history',
+    'escape_success_history',
+    'escape_delta_history',
+    'escape_phase_counts',
+    'diversity_history',
+    'fes_count',
+    'elapsed_time',
+]
 
 
 def _run_single_experiment(func_id, dimension, algo_name, seed, pop_size, max_fes):
@@ -21,17 +99,35 @@ def _run_single_experiment(func_id, dimension, algo_name, seed, pop_size, max_fe
 
 
 class ExperimentRunner:
-    def __init__(self, dimensions=30, population_size=50, max_fes=3000000, 
-                 num_runs=30, seed_list=None):
+    def __init__(self, dimensions=30, population_size=50, max_fes=3000000,
+                 num_runs=30, seed_list=None, max_workers=None):
         self.dimensions = dimensions
         self.population_size = population_size
         self.max_fes = max_fes
         self.num_runs = num_runs
         self.seed_list = seed_list if seed_list is not None else list(range(1, num_runs + 1))
-        
+        self.max_workers = max_workers or int(os.environ.get('MAX_WORKERS', 8))
+
         self.results = {}
-    
-    def run_qwmo(self, benchmark, ablation_config='full', seed=None):
+
+    def run_qwmo(self, benchmark, ablation_config='full_dynamic', seed=None,
+                 qwmo_param_overrides=None):
+        qwmo_params = {
+            'gamma': 0.05,
+            'c_base': 5,
+            'kappa_0': 8,
+            'k_s': 10,
+            'eta_r': 0.001,
+            'epsilon_max_ratio': 0.1,
+            'epsilon_min_ratio': 0.01,
+            'static_epsilon_ratio': 0.05,
+            'adaptive_k': 3,
+            'adaptive_lambda0': 0.75,
+            'adaptive_epsilon_max_ratio': 0.15,
+        }
+        if qwmo_param_overrides:
+            qwmo_params.update(qwmo_param_overrides)
+
         optimizer = QWMO(
             func=benchmark,
             dimension=self.dimensions,
@@ -39,32 +135,33 @@ class ExperimentRunner:
             upper_bound=benchmark.upper_bound,
             population_size=self.population_size,
             max_fes=self.max_fes,
-            gamma=0.05,
-            c_base=5,
-            kappa_0=8,
-            epsilon_r=0.05,
-            k_s=10,
-            eta_r=0.001,
-            epsilon_max_ratio=0.1,
-            epsilon_min_ratio=0.01,
+            **qwmo_params,
             ablation_config=ablation_config,
-            seed=seed
+            seed=seed,
         )
-        
+
         start_time = time.time()
         best_pos, best_fit = optimizer.run()
         elapsed = time.time() - start_time
-        
+
         return {
             'best_fitness': best_fit,
             'best_position': best_pos,
             'convergence': optimizer.convergence_history,
             'fes_count': optimizer.fes_count,
             'elapsed_time': elapsed,
-            'pauli_collisions': optimizer.pauli_collision_history,
-            'escape_activations': optimizer.escape_activation_history
+            'pauli_collision_history': optimizer.pauli_collision_history,
+            'pauli_displacement_history': optimizer.pauli_displacement_history,
+            'pauli_success_history': optimizer.pauli_success_history,
+            'epsilon_history': optimizer.epsilon_history,
+            'escape_attempt_history': optimizer.escape_attempt_history,
+            'escape_executed_history': optimizer.escape_executed_history,
+            'escape_success_history': optimizer.escape_success_history,
+            'escape_delta_history': optimizer.escape_delta_history,
+            'escape_phase_counts': optimizer.escape_phase_counts,
+            'diversity_history': optimizer.diversity_history,
         }
-    
+
     def run_aso(self, benchmark, seed=None):
         optimizer = ASO(
             func=benchmark,
@@ -77,11 +174,11 @@ class ExperimentRunner:
             beta=0.2,
             seed=seed
         )
-        
+
         start_time = time.time()
         best_pos, best_fit = optimizer.run()
         elapsed = time.time() - start_time
-        
+
         return {
             'best_fitness': best_fit,
             'best_position': best_pos,
@@ -89,7 +186,7 @@ class ExperimentRunner:
             'fes_count': optimizer.fes_count,
             'elapsed_time': elapsed
         }
-    
+
     def run_aos(self, benchmark, seed=None):
         optimizer = AOS(
             func=benchmark,
@@ -102,11 +199,11 @@ class ExperimentRunner:
             foton_rate=0.1,
             seed=seed
         )
-        
+
         start_time = time.time()
         best_pos, best_fit = optimizer.run()
         elapsed = time.time() - start_time
-        
+
         return {
             'best_fitness': best_fit,
             'best_position': best_pos,
@@ -114,7 +211,7 @@ class ExperimentRunner:
             'fes_count': optimizer.fes_count,
             'elapsed_time': elapsed
         }
-    
+
     def run_qpso(self, benchmark, seed=None):
         optimizer = QPSO(
             func=benchmark,
@@ -127,11 +224,11 @@ class ExperimentRunner:
             alpha_min=0.5,
             seed=seed
         )
-        
+
         start_time = time.time()
         best_pos, best_fit = optimizer.run()
         elapsed = time.time() - start_time
-        
+
         return {
             'best_fitness': best_fit,
             'best_position': best_pos,
@@ -139,41 +236,46 @@ class ExperimentRunner:
             'fes_count': optimizer.fes_count,
             'elapsed_time': elapsed
         }
-    
-    def run_mealpy_algorithm(self, benchmark, algorithm_class, seed=None):
+
+    def run_mealpy_algorithm(self, benchmark, algorithm_name, seed=None):
+        import contextlib
+        import io
         from mealpy import Problem, FloatVar
-        
-        bounds = [FloatVar(lb=benchmark.lower_bound, ub=benchmark.upper_bound, name=f"x{i}") 
+
+        algorithm_class = _import_mealpy_algorithm(algorithm_name)
+
+        bounds = [FloatVar(lb=benchmark.lower_bound, ub=benchmark.upper_bound, name=f"x{i}")
                   for i in range(self.dimensions)]
-        
+
         class BenchmarkProblem(Problem):
             def obj_func(self, x):
                 return benchmark(x)
-        
-        problem = BenchmarkProblem(bounds=bounds, minmax="min")
-        
+
+        problem = BenchmarkProblem(bounds, minmax="min")
+
         termination = {
             "max_fe": self.max_fes
         }
-        
+
         if seed is not None:
             np.random.seed(seed)
-        
+
         start_time = time.time()
-        
+
         try:
             optimizer = algorithm_class(
                 epoch=self.max_fes // self.population_size,
                 pop_size=self.population_size
             )
-            optimizer.solve(problem, termination=termination)
-            
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                optimizer.solve(problem, termination=termination)
+
             best_pos = optimizer.g_best.solution
             best_fit = optimizer.g_best.target.fitness
             convergence = optimizer.history.list_global_best_fit
-            
+
             elapsed = time.time() - start_time
-            
+
             return {
                 'best_fitness': best_fit,
                 'best_position': best_pos,
@@ -184,37 +286,36 @@ class ExperimentRunner:
         except Exception as e:
             print(f"Error running {algorithm_class.__name__}: {e}")
             return None
-    
+
     def run_cma_es(self, benchmark, seed=None):
-        if seed is not None:
-            np.random.seed(seed)
-        
+        rng = np.random.default_rng(seed)
+
         sigma0 = (benchmark.upper_bound - benchmark.lower_bound) / 4
-        x0 = np.random.uniform(benchmark.lower_bound, benchmark.upper_bound, self.dimensions)
-        
+        x0 = rng.uniform(benchmark.lower_bound, benchmark.upper_bound, self.dimensions)
+
         opts = {
             'maxfevals': self.max_fes,
             'bounds': [benchmark.lower_bound, benchmark.upper_bound],
             'verbose': -1,
             'seed': seed
         }
-        
+
         start_time = time.time()
-        
+
         es = cma.CMAEvolutionStrategy(x0.tolist(), sigma0, opts)
-        
+
         convergence = []
         fes_count = 0
-        
+
         while not es.stop() and fes_count < self.max_fes:
             solutions = es.ask()
             fitnesses = [benchmark(np.array(x)) for x in solutions]
             fes_count += len(solutions)
             es.tell(solutions, fitnesses)
             convergence.append(es.result.fbest)
-        
+
         elapsed = time.time() - start_time
-        
+
         result = es.result
         return {
             'best_fitness': result.fbest,
@@ -223,18 +324,14 @@ class ExperimentRunner:
             'fes_count': fes_count,
             'elapsed_time': elapsed
         }
-    
-    def run_single_experiment(self, func_id, algorithm_name, seed):
+
+    def run_single_experiment(self, func_id, algorithm_name, seed,
+                               qwmo_param_overrides=None):
         benchmark = CEC2017Benchmark(func_id, self.dimensions)
-        
-        if algorithm_name == 'QWMO_Full':
-            return self.run_qwmo(benchmark, 'full', seed)
-        elif algorithm_name == 'QWMO_OrbitalOnly':
-            return self.run_qwmo(benchmark, 'orbital_only', seed)
-        elif algorithm_name == 'QWMO_OrbitalPauli':
-            return self.run_qwmo(benchmark, 'orbital_pauli', seed)
-        elif algorithm_name == 'QWMO_OrbitalEscape':
-            return self.run_qwmo(benchmark, 'orbital_escape', seed)
+
+        if algorithm_name in ALGO_TO_QWMO_CONFIG:
+            return self.run_qwmo(benchmark, ALGO_TO_QWMO_CONFIG[algorithm_name], seed,
+                                 qwmo_param_overrides=qwmo_param_overrides)
         elif algorithm_name == 'ASO':
             return self.run_aso(benchmark, seed)
         elif algorithm_name == 'AOS':
@@ -242,30 +339,21 @@ class ExperimentRunner:
         elif algorithm_name == 'QPSO':
             return self.run_qpso(benchmark, seed)
         elif algorithm_name == 'PSO':
-            return self.run_mealpy_algorithm(benchmark, OriginalPSO, seed)
+            return self.run_mealpy_algorithm(benchmark, 'PSO', seed)
         elif algorithm_name == 'GA':
-            return self.run_mealpy_algorithm(benchmark, OriginalGA, seed)
+            return self.run_mealpy_algorithm(benchmark, 'GA', seed)
         elif algorithm_name == 'GWO':
-            return self.run_mealpy_algorithm(benchmark, OriginalGWO, seed)
+            return self.run_mealpy_algorithm(benchmark, 'GWO', seed)
         elif algorithm_name == 'HHO':
-            return self.run_mealpy_algorithm(benchmark, OriginalHHO, seed)
+            return self.run_mealpy_algorithm(benchmark, 'HHO', seed)
         elif algorithm_name == 'SHADE':
-            return self.run_mealpy_algorithm(benchmark, OriginalSHADE, seed)
+            return self.run_mealpy_algorithm(benchmark, 'SHADE', seed)
         elif algorithm_name == 'CMA_ES':
             return self.run_cma_es(benchmark, seed)
         else:
             raise ValueError(f"Unknown algorithm: {algorithm_name}")
-    
-    def run_full_experiment(self, func_ids=None, algorithms=None, parallel=True):
-        if func_ids is None:
-            func_ids = get_cec2017_functions()
-        
-        if algorithms is None:
-            algorithms = [
-                'QWMO_Full', 'QWMO_OrbitalOnly', 'QWMO_OrbitalPauli', 'QWMO_OrbitalEscape',
-                'PSO', 'GA', 'GWO', 'HHO', 'SHADE', 'ASO', 'AOS', 'QPSO', 'CMA_ES'
-            ]
-        
+
+    def _init_results_dict(self, func_ids, algorithms):
         self.results = {}
         for func_id in func_ids:
             self.results[f'F{func_id}'] = {}
@@ -273,19 +361,36 @@ class ExperimentRunner:
                 self.results[f'F{func_id}'][algo_name] = {
                     'fitnesses': [], 'times': []
                 }
-        
+                for key in QWMO_MECHANISM_KEYS:
+                    self.results[f'F{func_id}'][algo_name][f'{key}_list'] = []
+
+    def run_full_experiment(self, func_ids=None, algorithms=None, parallel=True):
+        if func_ids is None:
+            func_ids = get_cec2017_functions()
+
+        if algorithms is None:
+            algorithms = [
+                'QWMO_Full_Dynamic', 'QWMO_OrbitalOnly',
+                'QWMO_OrbitalPauli_Static', 'QWMO_OrbitalPauli_Dynamic',
+                'QWMO_OrbitalEscape', 'QWMO_Full_Static',
+                'PSO', 'GA', 'GWO', 'HHO', 'SHADE',
+                'ASO', 'AOS', 'QPSO', 'CMA_ES'
+            ]
+
+        self._init_results_dict(func_ids, algorithms)
+
         if parallel:
-            n_workers = min(8, os.cpu_count() or 1)
+            n_workers = min(self.max_workers, os.cpu_count() or 1)
             print(f"Using {n_workers} workers for parallel execution")
-            
+
             tasks = [(func_id, algo_name, seed)
                      for func_id in func_ids
                      for algo_name in algorithms
                      for seed in self.seed_list]
-            
+
             completed = 0
             total = len(tasks)
-            
+
             with ProcessPoolExecutor(max_workers=n_workers) as executor:
                 fut_to_task = {
                     executor.submit(
@@ -294,40 +399,46 @@ class ExperimentRunner:
                     ): (func_id, algo_name, seed)
                     for func_id, algo_name, seed in tasks
                 }
-                
+
                 for future in as_completed(fut_to_task):
                     func_id, algo_name, seed = fut_to_task[future]
                     completed += 1
                     try:
                         _, _, _, result = future.result()
                         if result:
-                            self.results[f'F{func_id}'][algo_name]['fitnesses'].append(result['best_fitness'])
-                            self.results[f'F{func_id}'][algo_name]['times'].append(result['elapsed_time'])
+                            self._accumulate_result(func_id, algo_name, result)
                             print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: "
                                   f"f={result['best_fitness']:.6e} t={result['elapsed_time']:.2f}s")
                         else:
                             print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: FAILED")
                     except Exception as e:
                         print(f"  [{completed}/{total}] F{func_id} | {algo_name} | seed={seed}: ERROR {e}")
+
+                    if completed % 50 == 0:
+                        ckpt_dir = 'results'
+                        os.makedirs(ckpt_dir, exist_ok=True)
+                        ckpt_path = os.path.join(ckpt_dir, f'checkpoint_{completed}.json')
+                        with open(ckpt_path, 'w') as f:
+                            json.dump(self.results, f, default=str)
+                        print(f"  [checkpoint] Saved {ckpt_path}")
         else:
             for func_id in func_ids:
                 print(f"\n{'='*60}")
                 print(f"Function F{func_id} (D={self.dimensions})")
                 print(f"{'='*60}")
-                
+
                 for algo_name in algorithms:
                     print(f"\n{algo_name}:")
-                    
+
                     for i, seed in enumerate(self.seed_list):
                         result = self.run_single_experiment(func_id, algo_name, seed)
-                        
+
                         if result:
-                            self.results[f'F{func_id}'][algo_name]['fitnesses'].append(result['best_fitness'])
-                            self.results[f'F{func_id}'][algo_name]['times'].append(result['elapsed_time'])
+                            self._accumulate_result(func_id, algo_name, result)
                             print(f"  Run {i+1}/{self.num_runs}: fitness={result['best_fitness']:.6e}, time={result['elapsed_time']:.2f}s")
                         else:
                             print(f"  Run {i+1}/{self.num_runs}: FAILED")
-        
+
         print(f"\n{'='*60}")
         print("Final Summary")
         print(f"{'='*60}")
@@ -336,14 +447,23 @@ class ExperimentRunner:
                 fits = self.results[f'F{func_id}'][algo_name]['fitnesses']
                 ts = self.results[f'F{func_id}'][algo_name]['times']
                 self.results[f'F{func_id}'][algo_name].update({
-                    'mean': np.mean(fits) if fits else None,
-                    'std': np.std(fits) if fits else None,
-                    'mean_time': np.mean(ts) if ts else None,
+                    'mean': float(np.mean(fits)) if fits else None,
+                    'std': float(np.std(fits)) if fits else None,
+                    'mean_time': float(np.mean(ts)) if ts else None,
                 })
                 if fits:
                     print(f"F{func_id} | {algo_name}: Mean={np.mean(fits):.6e} ± {np.std(fits):.6e}")
-        
+
         return self.results
+
+    def _accumulate_result(self, func_id, algo_name, result):
+        algo_dict = self.results[f'F{func_id}'][algo_name]
+        algo_dict['fitnesses'].append(result['best_fitness'])
+        algo_dict['times'].append(result['elapsed_time'])
+        for key in QWMO_MECHANISM_KEYS:
+            list_key = f'{key}_list'
+            if key in result:
+                algo_dict[list_key].append(result[key])
 
 
 if __name__ == '__main__':

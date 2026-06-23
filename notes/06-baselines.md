@@ -1,5 +1,7 @@
 # Baseline Algorithms
 
+> 📚 **Related Notes:** [[00-index|Vault Index]] · [[02-algorithm|Algorithm]] · [[05-architecture|Architecture]] · [[03-pilots-overview|Pilots]]
+
 This document provides detailed information about the baseline algorithms used in QWMO benchmark experiments.
 
 ## Classical / Swarm-Based

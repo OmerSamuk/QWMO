@@ -1,5 +1,7 @@
 # QWMO Architecture
 
+> 📚 **Related Notes:** [[00-index|Vault Index]] · [[02-algorithm|Algorithm]] · [[06-baselines|Baselines]] · [[../charters/qwmo-gapr-test|Faz-1 Charter]]
+
 ## Module Dependencies
 
 This document describes the relationships between QWMO modules using the `entity → relationship → entity` format for Graphify knowledge graph extraction.

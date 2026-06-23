@@ -2,6 +2,8 @@
 
 QWMO is a quantum-inspired population-based optimization framework that combines three probabilistic operators to balance exploration and exploitation in multimodal optimization landscapes.
 
+> 📚 **Obsidian Vault:** This repository is also an Obsidian vault. Open it in Obsidian to browse `notes/` and `charters/` with backlinks. Start at `notes/00-index.md`.
+
 ## Features
 
 - **Adaptive Orbital Sampling:** Controls Gaussian search dispersion according to relative solution quality
@@ -33,7 +35,7 @@ optimizer = QWMO(
     lower_bound=-100,
     upper_bound=100,
     population_size=50,
-    max_fes=3_000_000,
+    max_fes=300_000,  # CEC2017 standard: 10,000 * D
     seed=42
 )
 
@@ -54,8 +56,38 @@ python experiments/run_experiments.py --dimensions 30
 python -c "from analysis.sensitivity import full_sensitivity_analysis; full_sensitivity_analysis()"
 
 # Run runtime analysis
-python -c "from analysis.runtime import full_runtime_analysis; full_runtime_analysis()"
+python -c "from analysis.runtime import full_runtime_analysis; full_runtime_analysis()
 ```
+
+### FEs Budget (CEC2017 Standard)
+
+Experiments use the CEC2017 standard FEs budget of `10,000 × D` function evaluations per run, ensuring direct comparability with published CEC2017 results:
+
+| Dimension | max_fes | Epochs (pop=50) |
+|-----------|---------|------------------|
+| 30D       | 300,000 | 6,000            |
+| 50D       | 500,000 | 10,000           |
+| 100D      | 1,000,000 | 20,000         |
+
+### Performance & Computational Cost
+
+Estimated wall-clock time on GCP `n2-highcpu-16` (16 vCPU, $0.579/hour on-demand, Iowa region):
+
+| Dimension | 8 workers (n2-standard-8) | 16 workers (n2-highcpu-16) | Cost (n2-highcpu-16) |
+|-----------|---------------------------|---------------------------|----------------------|
+| 30D       | ~2.3h                     | ~1.3h                     | ~$0.75               |
+| 50D       | ~6.2h                     | ~3.5h                     | ~$2.00               |
+| 100D      | ~25h                      | ~14h                      | ~$8.00               |
+| **Total (30+50+100D)** | ~33.5h           | **~19h**                  | **~$10.75**          |
+
+To use 16 workers on a 16 vCPU machine, set the environment variable before running:
+
+```bash
+export MAX_WORKERS=16
+python experiments/run_experiments.py --dimensions 30 50 100
+```
+
+Checkpoints are saved to `results/checkpoint_N.json` every 50 completed experiments, enabling resume after VM interruption.
 
 ## Project Structure
 

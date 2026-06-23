@@ -1,0 +1,126 @@
+import os
+import numpy as np
+import pandas as pd
+from scipy.stats import wilcoxon
+from analysis.stats import cliffs_delta
+
+FUNCTION_NAMES = {1: "Sphere", 5: "Schwefel", 10: "Rastrigin"}
+VARIANT_ORDER = ["Full-old", "E-old", "Csigma"]
+COMPARISONS = [
+    ("Csigma", "Full-old"),
+    ("Csigma", "E-old"),
+    ("E-old", "Full-old"),
+]
+
+
+def load_results(results_path):
+    df = pd.read_csv(results_path)
+    df["function"] = df["function"].astype(int)
+    return df
+
+
+def compute_stats(results_path, out_dir="results/csigma_diagnostic"):
+    df = load_results(results_path)
+    functions = sorted(df["function"].unique())
+
+    wilcoxon_rows = []
+    effect_rows = []
+    summary_rows = []
+
+    for func_id in functions:
+        func_df = df[df["function"] == func_id]
+        fname = FUNCTION_NAMES.get(func_id, f"F{func_id}")
+
+        for variant in VARIANT_ORDER:
+            vdf = func_df[func_df["variant_id"] == variant]
+            fits = vdf["best_fitness"].dropna().values
+            if len(fits) == 0:
+                continue
+            summary_rows.append({
+                "function": func_id,
+                "function_name": fname,
+                "variant": variant,
+                "mean": float(np.mean(fits)),
+                "std": float(np.std(fits)),
+                "median": float(np.median(fits)),
+                "min": float(np.min(fits)),
+                "max": float(np.max(fits)),
+                "best": float(np.min(fits)),
+                "worst": float(np.max(fits)),
+                "n_runs": len(fits),
+            })
+
+        for ctrl, comp in COMPARISONS:
+            ctrl_df = func_df[func_df["variant_id"] == ctrl][["seed", "best_fitness"]].dropna()
+            comp_df = func_df[func_df["variant_id"] == comp][["seed", "best_fitness"]].dropna()
+            merged = pd.merge(
+                ctrl_df, comp_df,
+                on="seed",
+                suffixes=("_ctrl", "_comp")
+            )
+            if len(merged) < 5:
+                continue
+            ctrl_fits = merged["best_fitness_ctrl"].values
+            comp_fits = merged["best_fitness_comp"].values
+
+            try:
+                w_stat, w_p = wilcoxon(ctrl_fits, comp_fits)
+            except (ValueError, RuntimeError):
+                w_stat, w_p = None, 1.0
+
+            cd = cliffs_delta(ctrl_fits, comp_fits)
+
+            wilcoxon_rows.append({
+                "function": func_id,
+                "function_name": fname,
+                "comparison": f"{ctrl} vs {comp}",
+                "control": ctrl,
+                "competitor": comp,
+                "wilcoxon_stat": w_stat,
+                "wilcoxon_p": w_p,
+                "significant": bool(w_p < 0.05) if w_p is not None else False,
+                "n_runs": int(len(merged)),
+            })
+
+            effect_rows.append({
+                "function": func_id,
+                "function_name": fname,
+                "comparison": f"{ctrl} vs {comp}",
+                "control": ctrl,
+                "competitor": comp,
+                "control_mean": float(np.mean(ctrl_fits)),
+                "competitor_mean": float(np.mean(comp_fits)),
+                "median_improvement_pct": float(
+                    (np.median(ctrl_fits) - np.median(comp_fits)) / abs(np.median(comp_fits)) * 100
+                ) if abs(np.median(comp_fits)) > 1e-12 else 0.0,
+                "Cliffs_delta": cd["Cliffs_delta"],
+                "effect_size": cd["interpretation"],
+            })
+
+    summary_df = pd.DataFrame(summary_rows)
+    wilcoxon_df = pd.DataFrame(wilcoxon_rows)
+    effect_df = pd.DataFrame(effect_rows)
+
+    os.makedirs(out_dir, exist_ok=True)
+    summary_df.to_csv(os.path.join(out_dir, "csigma_summary_table.csv"), index=False)
+    wilcoxon_df.to_csv(os.path.join(out_dir, "csigma_wilcoxon_results.csv"), index=False)
+    effect_df.to_csv(os.path.join(out_dir, "csigma_effect_sizes.csv"), index=False)
+
+    print(f"Summary table: {len(summary_df)} rows")
+    print(f"Wilcoxon results: {len(wilcoxon_df)} rows")
+    print(f"Effect sizes: {len(effect_df)} rows")
+
+    for _, row in wilcoxon_df.iterrows():
+        sig = "SIGNIFICANT" if row["significant"] else "n.s."
+        print(f"  F{int(row['function'])} {row['comparison']}: p={row['wilcoxon_p']:.4e} [{sig}]")
+
+    for _, row in effect_df.iterrows():
+        print(f"  F{int(row['function'])} {row['comparison']}: "
+              f"delta={row['Cliffs_delta']:.4f} ({row['effect_size']}) "
+              f"improvement={row['median_improvement_pct']:.2f}%")
+
+    return summary_df, wilcoxon_df, effect_df
+
+
+if __name__ == "__main__":
+    compute_stats("results/csigma_diagnostic/csigma_results_raw.csv")

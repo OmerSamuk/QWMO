@@ -2,11 +2,13 @@ import numpy as np
 
 
 class Agent:
-    def __init__(self, position, fitness=None):
+    def __init__(self, position, fitness=None, sigma_i=None, k_i=0):
         self.position = np.array(position, dtype=float)
         self.fitness = fitness
         self.stagnation_count = 0
         self.dimension = len(position)
+        self.sigma_i = sigma_i
+        self.k_i = k_i
 
     def update_position(self, new_position, new_fitness):
         if new_fitness < self.fitness:
@@ -25,6 +27,6 @@ class Agent:
         return np.clip(qi, 0.0, 1.0)
 
     def copy(self):
-        new_agent = Agent(self.position.copy(), self.fitness)
+        new_agent = Agent(self.position.copy(), self.fitness, sigma_i=self.sigma_i, k_i=self.k_i)
         new_agent.stagnation_count = self.stagnation_count
         return new_agent
