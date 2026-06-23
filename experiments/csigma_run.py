@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import re
 import numpy as np
 import pandas as pd
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -72,6 +73,25 @@ def _run_single(func_id, variant, seed):
     }
 
 
+def _find_latest_checkpoint(out_dir):
+    ckpt_files = sorted(
+        (f for f in os.listdir(out_dir) if re.match(r'checkpoint_(\d+)\.json$', f)),
+        key=lambda f: int(re.search(r'checkpoint_(\d+)\.json$', f).group(1))
+    )
+    if not ckpt_files:
+        return 0, [], set()
+
+    latest = ckpt_files[-1]
+    with open(os.path.join(out_dir, latest)) as f:
+        data = json.load(f)
+
+    completed = data["completed"]
+    summary = data["summary"]
+    completed_set = {(r["function"], r["variant"], r["seed"]) for r in summary}
+    print(f"  [resume] Loaded {latest}: {completed}/{data['total']} runs completed")
+    return completed, summary, completed_set
+
+
 def run_csigma(out_dir=None, max_workers=None):
     if out_dir is None:
         out_dir = CSIGMA_CONFIG["output_dir"]
@@ -89,16 +109,22 @@ def run_csigma(out_dir=None, max_workers=None):
     os.makedirs(iter_dir, exist_ok=True)
     os.makedirs(event_dir, exist_ok=True)
 
-    tasks = [(f, v, s) for f in functions for v in variants for s in seeds]
-    total = len(tasks)
+    all_tasks = [(f, v, s) for f in functions for v in variants for s in seeds]
+    total = len(all_tasks)
     nfunc = len(functions)
     nvar = len(variants)
     nseed = len(seeds)
     print(f"QWMO-Csigma: {nfunc} functions x {nvar} variants x {nseed} seeds = {total} runs")
     print(f"Parallel: {n_workers} workers, output: {out_dir}\n")
 
-    summary_rows = []
-    completed = 0
+    loaded_completed, summary_rows, completed_set = _find_latest_checkpoint(out_dir)
+    completed = loaded_completed
+
+    if completed > 0:
+        tasks = [t for t in all_tasks if t not in completed_set]
+        print(f"  [resume] Skipping {completed} completed runs, {len(tasks)} remaining")
+    else:
+        tasks = all_tasks
 
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
         fut_map = {}
