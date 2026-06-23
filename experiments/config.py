@@ -197,3 +197,27 @@ PHASE1_CONFIG = {
     "smoke_seeds": list(range(0, 5)),
     "smoke_max_fes": 30_000,
 }
+
+CSIGMA_CONFIG = {
+    "functions": [1, 5, 10],
+    "function_names": {1: "Sphere", 5: "Schwefel", 10: "Rastrigin"},
+    "dimension": 30,
+    "population_size": 50,
+    "max_fes": 300_000,
+    "seeds": list(range(1, 31)),
+    "search_range": 200,
+    "ablation_configs": [
+        "csigma_full_old",
+        "csigma_e_old",
+        "csigma_csigma",
+    ],
+    "variant_labels": {
+        "csigma_full_old": "Full-old",
+        "csigma_e_old": "E-old",
+        "csigma_csigma": "Csigma",
+    },
+    "output_dir": "results/csigma_diagnostic",
+    "run_prefix": "CSIGMA",
+    "smoke_seeds": list(range(1, 6)),
+    "smoke_max_fes": 30_000,
+}

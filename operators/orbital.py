@@ -16,3 +16,15 @@ def adaptive_orbital_sampling(agent, best_fitness, worst_fitness, t, T_max,
     new_position = np.clip(new_position, lower_bound, upper_bound)
 
     return new_position
+
+
+def improvement_aware_orbital_sampling(agent, best_fitness, worst_fitness,
+                                        lower_bound, upper_bound, rng,
+                                        gamma, sigma_min=1e-10, epsilon=1e-10):
+    qi = agent.compute_qi(best_fitness, worst_fitness, epsilon)
+    search_range = upper_bound - lower_bound
+    sigma_max_i = gamma * search_range * (2 - qi)
+    sigma_clipped = max(sigma_min, min(agent.sigma_i, sigma_max_i))
+    new_position = rng.normal(agent.position, sigma_clipped)
+    new_position = np.clip(new_position, lower_bound, upper_bound)
+    return new_position

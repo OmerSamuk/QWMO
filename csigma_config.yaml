@@ -1,0 +1,66 @@
+# QWMO-Cσ Diagnostic Config (qwmo-csigma-diagnostic.md §13)
+# This config is locked per charter lock.
+
+functions:
+  - id: 1
+    name: Sphere
+    role: exploitation_test
+  - id: 5
+    name: Schwefel
+    role: deceptive_landscape
+  - id: 10
+    name: Rastrigin
+    role: multimodal_escape
+
+dimension: 30
+population_size: 50
+max_fes: 300000
+seeds: 1..30
+num_runs: 30
+total_experiments: 270
+
+variants:
+  - id: csigma_full_old
+    name: QWMO-Full-old
+    orbital_mode: time_decay
+    pauli: true
+    pauli_epsilon_mode: static
+    static_epsilon_ratio: 0.05
+    escape: true
+  - id: csigma_e_old
+    name: QWMO-E-old
+    orbital_mode: time_decay
+    pauli: false
+    escape: true
+  - id: csigma_csigma
+    name: QWMO-Csigma
+    orbital_mode: improvement_aware
+    pauli: false
+    escape: true
+
+logging:
+  window: 5
+  improvement_threshold: 1e-12
+  diversity_interval: 500
+
+statistical:
+  primary_test: wilcoxon_signed_rank
+  significance_threshold: 0.05
+  effect_size: cliffs_delta
+  comparisons:
+    - Csigma vs Full-old
+    - Csigma vs E-old
+    - E-old vs Full-old
+
+output:
+  results_raw: csigma_results_raw.csv
+  iteration_metrics: csigma_iteration_metrics.csv
+  event_logs: csigma_event_logs.csv
+  summary_table: csigma_summary_table.csv
+  wilcoxon_results: csigma_wilcoxon_results.csv
+  effect_sizes: csigma_effect_sizes.csv
+  mechanism_summary: csigma_mechanism_summary.csv
+  decision_report: csigma_decision_report.md
+  plots_dir: csigma_plots/
+
+locked: true

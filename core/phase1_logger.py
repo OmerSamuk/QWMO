@@ -124,7 +124,9 @@ class Phase1Logger:
                           epsilon_value=None, collision_count=0, displacement_count=0,
                           escape_triggered_count=0,
                           pauli_events=None, escape_events=None,
-                          new_positions=None, old_positions_for_clipping=None):
+                          new_positions=None, old_positions_for_clipping=None,
+                          sigma_mean=None, sigma_median=None, sigma_min=None, sigma_max=None,
+                          k_mean=None, k_stagnant_count=None, tau_value=None):
         self.current_t = t
         self.update_agent_fitnesses(agents)
         if pauli_events:
@@ -176,6 +178,22 @@ class Phase1Logger:
             'pauli_neutral_count': pauli_n,
             'boundary_clipping_count': clipping,
         }
+
+        if sigma_mean is not None:
+            row['sigma_mean'] = sigma_mean
+        if sigma_median is not None:
+            row['sigma_median'] = sigma_median
+        if sigma_min is not None:
+            row['sigma_min'] = sigma_min
+        if sigma_max is not None:
+            row['sigma_max'] = sigma_max
+        if k_mean is not None:
+            row['k_mean'] = k_mean
+        if k_stagnant_count is not None:
+            row['k_stagnant_count'] = k_stagnant_count
+        if tau_value is not None:
+            row['tau_value'] = tau_value
+
         self.iteration_metrics.append(row)
 
     def get_iteration_metrics_df(self):

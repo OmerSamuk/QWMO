@@ -1,6 +1,6 @@
 import numpy as np
 from core.agent import Agent
-from operators.orbital import adaptive_orbital_sampling
+from operators.orbital import adaptive_orbital_sampling, improvement_aware_orbital_sampling
 from operators.pauli import pauli_exclusion
 from operators.escape import adaptive_quantum_escape
 from core.phase1_logger import Phase1Logger
@@ -26,6 +26,9 @@ ABLATION_CONFIGS = {
     'phase1_v1',
     'phase1_v2',
     'phase1_v3',
+    'csigma_full_old',
+    'csigma_e_old',
+    'csigma_csigma',
 }
 
 
@@ -80,10 +83,11 @@ class QWMO:
             'phase1_v1',
             'phase1_v2',
             'phase1_v3',
+            'csigma_full_old',
         )
         if 'adaptive' in ablation_config or 'gapr' in ablation_config or ablation_config == 'phase1_v3':
             self.pauli_epsilon_mode = 'adaptive'
-        elif 'static' in ablation_config or ablation_config == 'phase1_v1':
+        elif 'static' in ablation_config or ablation_config == 'phase1_v1' or ablation_config == 'csigma_full_old':
             self.pauli_epsilon_mode = 'static'
         elif 'dynamic' in ablation_config or ablation_config == 'phase1_v2':
             self.pauli_epsilon_mode = 'dynamic'
@@ -100,9 +104,14 @@ class QWMO:
             'phase1_v1',
             'phase1_v2',
             'phase1_v3',
+            'csigma_full_old',
+            'csigma_e_old',
+            'csigma_csigma',
         )
 
         self.rng = np.random.default_rng(seed)
+
+        self.orbital_mode = 'improvement_aware' if ablation_config == 'csigma_csigma' else 'time_decay'
 
         self.agents = []
         self.best_agent = None
@@ -114,6 +123,10 @@ class QWMO:
         self.pauli_displacement_history = []
         self.pauli_success_history = []
         self.epsilon_history = []
+
+        self.sigma_history = []
+        self.k_history = []
+        self.tau_history = []
 
         self.escape_attempt_history = []
         self.escape_executed_history = []
@@ -145,6 +158,17 @@ class QWMO:
         self.convergence_history.append(self.best_agent.fitness)
         self._record_diversity()
 
+        if self.orbital_mode == 'improvement_aware':
+            fitnesses = [a.fitness for a in self.agents]
+            best_f = min(fitnesses)
+            worst_f = max(fitnesses)
+            search_range = self.upper_bound - self.lower_bound
+            for agent in self.agents:
+                qi = agent.compute_qi(best_f, worst_f)
+                sigma_max_i = self.gamma * search_range * (2 - qi)
+                agent.sigma_i = sigma_max_i
+                agent.k_i = 0
+
     def _escape_phase(self, t, T_max):
         ratio = t / T_max
         if ratio < 0.33:
@@ -152,6 +176,61 @@ class QWMO:
         if ratio < 0.66:
             return 'mid'
         return 'late'
+
+    def _get_sigma_max_i(self, qi):
+        search_range = self.upper_bound - self.lower_bound
+        return self.gamma * search_range * (2 - qi)
+
+    def _update_csigma_sigmas(self, pre_fitnesses):
+        fitnesses = [a.fitness for a in self.agents]
+        best_f = min(fitnesses)
+        worst_f = max(fitnesses)
+
+        denom = max(
+            worst_f - best_f,
+            1e-8 * (abs(best_f) + 1)
+        )
+
+        r_values = []
+        for i, agent in enumerate(self.agents):
+            f_old = pre_fitnesses[i]
+            f_new = agent.fitness
+            r_raw = (f_old - f_new) / denom
+            r_i = np.tanh(r_raw)
+            r_values.append(r_i)
+
+        positive_rs = [r for r in r_values if r > 0]
+        if positive_rs:
+            median_pos = float(np.median(positive_rs))
+            tau = max(1e-6, 1e-3 * median_pos)
+        else:
+            tau = 1e-6
+
+        for i, agent in enumerate(self.agents):
+            r_i = r_values[i]
+            if r_i > tau:
+                agent.sigma_i = agent.sigma_i * (1 - 0.01 * r_i)
+                agent.k_i = 0
+            else:
+                agent.sigma_i = agent.sigma_i * (1 + 0.01)
+                agent.k_i += 1
+            qi = agent.compute_qi(best_f, worst_f)
+            sigma_max_i = self._get_sigma_max_i(qi)
+            agent.sigma_i = float(np.clip(agent.sigma_i, 1e-10, sigma_max_i))
+
+        sigmas = [a.sigma_i for a in self.agents]
+        ks = [a.k_i for a in self.agents]
+        self.sigma_history.append({
+            'mean': float(np.mean(sigmas)),
+            'median': float(np.median(sigmas)),
+            'min': float(np.min(sigmas)),
+            'max': float(np.max(sigmas)),
+        })
+        self.k_history.append({
+            'mean': float(np.mean(ks)),
+            'stagnant': int(sum(1 for k in ks if k > 0)),
+        })
+        self.tau_history.append(tau)
 
     def run(self):
         self.initialize_population()
@@ -164,18 +243,28 @@ class QWMO:
 
             pre_positions = np.array([agent.position for agent in self.agents])
 
-            fitnesses = [agent.fitness for agent in self.agents]
+            pre_fitnesses = [agent.fitness for agent in self.agents]
+            fitnesses = list(pre_fitnesses)
             best_fitness = min(fitnesses)
             worst_fitness = max(fitnesses)
 
             new_positions = []
-            for agent in self.agents:
-                new_pos = adaptive_orbital_sampling(
-                    agent, best_fitness, worst_fitness, t, T_max,
-                    self.gamma, self.c_base,
-                    self.lower_bound, self.upper_bound, self.rng
-                )
-                new_positions.append(new_pos)
+            if self.orbital_mode == 'improvement_aware':
+                for agent in self.agents:
+                    new_pos = improvement_aware_orbital_sampling(
+                        agent, best_fitness, worst_fitness,
+                        self.lower_bound, self.upper_bound, self.rng,
+                        self.gamma
+                    )
+                    new_positions.append(new_pos)
+            else:
+                for agent in self.agents:
+                    new_pos = adaptive_orbital_sampling(
+                        agent, best_fitness, worst_fitness, t, T_max,
+                        self.gamma, self.c_base,
+                        self.lower_bound, self.upper_bound, self.rng
+                    )
+                    new_positions.append(new_pos)
 
             new_fitnesses = []
             try:
@@ -190,6 +279,9 @@ class QWMO:
                 agent.update_position(new_position, new_fitness)
                 if agent.fitness < self.best_agent.fitness:
                     self.best_agent = agent.copy()
+
+            if self.orbital_mode == 'improvement_aware':
+                self._update_csigma_sigmas(pre_fitnesses)
 
             pauli_events = []
             escape_events = []
@@ -282,6 +374,20 @@ class QWMO:
             if t % self.diversity_interval == 0:
                 self._record_diversity()
 
+            sigma_kwargs = {}
+            if self.orbital_mode == 'improvement_aware' and self.sigma_history:
+                s = self.sigma_history[-1]
+                k_info = self.k_history[-1]
+                sigma_kwargs = {
+                    'sigma_mean': s['mean'],
+                    'sigma_median': s['median'],
+                    'sigma_min': s['min'],
+                    'sigma_max': s['max'],
+                    'k_mean': k_info['mean'],
+                    'k_stagnant_count': k_info['stagnant'],
+                    'tau_value': self.tau_history[-1],
+                }
+
             if self.phase1_logger:
                 self.phase1_logger.record_iteration(
                     t=t, agents=self.agents, best_agent=self.best_agent,
@@ -293,6 +399,7 @@ class QWMO:
                     escape_events=escape_events if escape_events else None,
                     new_positions=new_positions,
                     old_positions_for_clipping=pre_positions,
+                    **sigma_kwargs,
                 )
 
         if len(self.convergence_history) == 0 or self.convergence_history[-1] != self.best_agent.fitness:
